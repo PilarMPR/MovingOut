@@ -1,0 +1,1625 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  Independence — visual structure / design prototype.
+  Self-contained: no build step, no network. Open it in a browser.
+  Spec of record is ../DESIGN-SYSTEM.md — when the two disagree, the spec wins.
+-->
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+h1,h2,h3,h4,p,pre,ul,ol,figure{margin:0;padding:0;}
+ul,ol{list-style:none;}
+img,svg{max-width:100%;}
+</style>
+<title>Independence — Visual Structure</title>
+
+<style>
+/* ============================================================
+   PRODUCT TOKENS — the deliverable (docs/DESIGN-BRIEF.md §6)
+   Fixed in both page themes: these are the app's own colours,
+   shown here the way they will ship.
+   ============================================================ */
+:root{
+  /* ground — warm plaster. The wall of the flat, not a sheet of paper */
+  --bg:#EBE4D9; --card:#F8F4EC; --sunk:#DFD6C6; --raised:#FFFDF8;
+  /* ink — warm near-black, for panel headers */
+  --ink:#1E1813; --ink-2:#2A231C; --ink-3:#3A3128;
+  --text:#1F1913; --muted:#6E6357; --faint:#A79B8B;
+  --border:rgba(31,25,19,.15); --border-ink:rgba(248,244,236,.10);
+  /* accent — interaction only, never meaning */
+  --accent:#7B3A87; --accent-l:#C88ED6; --accent-t:#F2E6F4;
+  /* semantic — meaning only, never decoration */
+  --green:#3D6B33; --green-t:#E6EDDA; --green-f:#6B9243;
+  --red:#B23A25;   --red-t:#F7E4DC;   --red-f:#CE5A3E;
+  --amber:#8A6212; --amber-t:#F6E8CB; --amber-f:#C9901A;
+  --stone:#6E6357; --stone-t:#E7DFD1;
+
+  --r-sm:4px; --r:8px; --r-lg:12px;
+  --sh-1:0 1px 2px rgba(28,22,17,.08);
+  --sh-2:0 4px 14px rgba(28,22,17,.12);
+  --sh-3:0 22px 55px rgba(28,22,17,.30);
+
+  --display:'Archivo Expanded','Archivo','Liberation Sans Narrow',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono','JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --body:'IBM Plex Sans','Public Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+
+  /* ── PAGE CHROME (this spec page, not the app) ── */
+  --pg:#DCD1BF; --pg-2:#E9E1D5; --pg-fg:#1F1913; --pg-mut:#6A5F53;
+  --pg-rule:rgba(31,25,19,.20); --pg-card:#F2ECE2; --pg-inv:#1F1913;
+  --pg-accent:#6E3379;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --pg:#151110; --pg-2:#1E1815; --pg-fg:#EDE4D6; --pg-mut:#9A8D7D;
+    --pg-rule:rgba(237,228,214,.15); --pg-card:#241D18; --pg-inv:#EDE4D6;
+    --pg-accent:#D194DE;
+  }
+}
+:root[data-theme="dark"]{
+  --pg:#151110; --pg-2:#1E1815; --pg-fg:#EDE4D6; --pg-mut:#9A8D7D;
+  --pg-rule:rgba(237,228,214,.15); --pg-card:#241D18; --pg-inv:#EDE4D6;
+  --pg-accent:#D194DE;
+}
+
+*{box-sizing:border-box;}
+body{
+  background:var(--pg); color:var(--pg-fg);
+  font-family:var(--body); font-size:15px; line-height:1.6;
+  -webkit-font-smoothing:antialiased; margin:0;
+}
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important;} }
+:focus-visible{ outline:2px solid var(--pg-accent); outline-offset:2px; border-radius:3px; }
+
+/* ── PAGE LAYOUT ─────────────────────────────────────────── */
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 120px;}
+.masthead{
+  border-bottom:1px solid var(--pg-rule);
+  padding:64px 0 34px; margin-bottom:8px;
+  display:grid; gap:20px;
+}
+.eyebrow{
+  font-family:var(--mono); font-size:10px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--pg-mut);
+}
+.masthead h1{
+  font-family:var(--display); font-weight:800; font-size:clamp(34px,6vw,62px);
+  line-height:.95; letter-spacing:-.02em; margin:0; text-wrap:balance;
+}
+.masthead .lede{max-width:62ch;color:var(--pg-mut);font-size:16px;margin:0;}
+.masthead .lede strong{color:var(--pg-fg);font-weight:600;}
+.meta-strip{
+  display:flex;flex-wrap:wrap;gap:6px 10px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;color:var(--pg-mut);
+}
+.meta-strip span{border:1px solid var(--pg-rule);padding:3px 9px;border-radius:99px;}
+
+nav.toc{
+  position:sticky;top:0;z-index:60;
+  background:color-mix(in srgb,var(--pg) 88%,transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--pg-rule);
+  margin-bottom:56px;
+}
+nav.toc ul{
+  list-style:none;margin:0;padding:10px 0;display:flex;gap:2px;
+  overflow-x:auto;scrollbar-width:none;
+}
+nav.toc ul::-webkit-scrollbar{display:none;}
+nav.toc a{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--pg-mut);text-decoration:none;padding:6px 11px;border-radius:99px;white-space:nowrap;
+  border:1px solid transparent;
+}
+nav.toc a:hover{color:var(--pg-fg);border-color:var(--pg-rule);}
+
+section.plate{margin-bottom:76px;scroll-margin-top:64px;}
+.plate-head{display:grid;gap:10px;margin-bottom:24px;padding-bottom:14px;border-bottom:1px solid var(--pg-rule);}
+.plate-head h2{
+  font-family:var(--display);font-weight:800;font-size:clamp(22px,3.4vw,32px);
+  letter-spacing:-.015em;line-height:1.05;margin:0;text-wrap:balance;
+}
+.plate-head p{margin:0;color:var(--pg-mut);max-width:68ch;}
+h3.sub{
+  font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--pg-mut);margin:36px 0 12px;font-weight:400;
+}
+h3.sub:first-child{margin-top:0;}
+.prose{max-width:68ch;}
+.prose p{margin:0 0 14px;}
+.prose strong{font-weight:600;}
+.note{
+  border-left:2px solid var(--pg-accent);padding:2px 0 2px 16px;
+  color:var(--pg-mut);max-width:66ch;font-size:14px;
+}
+.note b{color:var(--pg-fg);font-weight:600;}
+
+/* screen frame — mock plates sit on the page like sheets on a light table */
+.frame{
+  background:var(--bg);border-radius:var(--r-lg);overflow:hidden;
+  box-shadow:var(--sh-3);border:1px solid rgba(28,22,17,.35);
+  margin:0 0 10px;
+}
+.frame-cap{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--pg-mut);margin:0 0 34px;padding:0 2px;
+}
+.frame-scroll{overflow-x:auto;}
+
+/* two-up helpers for the spec page */
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px;}
+.cols-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;}
+
+/* Q&A block for open problems */
+.qa{border-top:1px solid var(--pg-rule);padding:18px 0;display:grid;gap:8px;}
+.qa .q{font-weight:600;font-size:16px;text-wrap:balance;}
+.qa .a{color:var(--pg-mut);max-width:68ch;}
+.qa .a b{color:var(--pg-fg);font-weight:600;}
+.verdict-line{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--pg-accent);
+}
+
+/* build order */
+ol.build{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;gap:2px;}
+ol.build li{
+  counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:16px;
+  padding:14px 0;border-top:1px solid var(--pg-rule);align-items:baseline;
+}
+ol.build li::before{
+  content:counter(s,decimal-leading-zero);
+  font-family:var(--mono);font-size:11px;color:var(--pg-mut);letter-spacing:.06em;
+}
+ol.build b{display:block;font-weight:600;margin-bottom:2px;}
+ol.build code{font-family:var(--mono);font-size:12px;color:var(--pg-accent);}
+ol.build span{color:var(--pg-mut);font-size:14px;}
+
+pre.code{
+  background:var(--pg-card);border:1px solid var(--pg-rule);border-radius:var(--r);
+  padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:11.5px;line-height:1.75;
+  color:var(--pg-fg);margin:0;
+}
+pre.code .c{color:var(--pg-mut);}
+pre.code .v{color:var(--pg-accent);}
+
+/* swatches */
+.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1px;background:var(--pg-rule);border:1px solid var(--pg-rule);border-radius:var(--r);overflow:hidden;}
+.sw{background:var(--pg-card);padding:0;}
+.sw i{display:block;height:56px;}
+.sw div{padding:8px 10px 10px;}
+.sw b{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;font-weight:400;}
+.sw em{display:block;font-family:var(--mono);font-size:10px;color:var(--pg-mut);font-style:normal;}
+.sw p{margin:4px 0 0;font-size:11.5px;color:var(--pg-mut);line-height:1.4;}
+
+.type-row{display:grid;grid-template-columns:110px 1fr;gap:18px;padding:16px 0;border-top:1px solid var(--pg-rule);align-items:center;}
+.type-row .role{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--pg-mut);}
+.type-row .spec{font-size:12px;color:var(--pg-mut);font-family:var(--mono);}
+
+/* ============================================================
+   PRODUCT COMPONENTS — everything below is the app itself,
+   scoped to .app so the spec chrome never leaks in.
+   ============================================================ */
+.app{background:var(--bg);color:var(--text);font-family:var(--body);font-size:13px;line-height:1.5;}
+.app *{box-sizing:border-box;}
+.app button,.app input,.app select{font-family:inherit;font-size:inherit;color:inherit;}
+.app button{cursor:pointer;}
+
+/* header */
+.app .hdr{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:11px 16px;background:var(--ink);border-bottom:2px solid var(--accent);}
+.app .hdr-id{display:flex;align-items:baseline;gap:10px;}
+.app .hdr-id b{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:.02em;color:#F7F1E5;}
+.app .hdr-id em{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  color:rgba(245,238,227,.42);font-style:normal;}
+.app .hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.app .sel-dark{background:var(--ink-3);border:1px solid rgba(245,238,227,.16);color:#EFE7DA;
+  font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:var(--r-sm);}
+.app .sel-dark.acc{border-color:var(--accent-l);color:var(--accent-l);}
+
+/* tabs */
+.app .tabs{display:flex;background:var(--ink-2);border-bottom:1px solid var(--border-ink);padding:0 10px;overflow-x:auto;scrollbar-width:none;}
+.app .tabs::-webkit-scrollbar{display:none;}
+.app .tab{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+  color:rgba(245,238,227,.36);padding:10px 13px;background:none;border:none;
+  border-bottom:2px solid transparent;white-space:nowrap;}
+.app .tab.on{color:var(--accent-l);border-bottom-color:var(--accent-l);}
+
+.app .body{padding:14px 16px 18px;}
+
+/* panel */
+.app .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--sh-1);}
+.app .panel + .panel{margin-top:12px;}
+.app .ph{background:var(--ink);padding:7px 13px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.app .ph-l{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.2em;text-transform:uppercase;color:rgba(245,238,227,.55);}
+.app .ph-r{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;
+  letter-spacing:.12em;text-transform:uppercase;color:rgba(245,238,227,.32);}
+.app .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-l);flex-shrink:0;}
+.app .dot.g{background:var(--green-f);} .app .dot.r{background:var(--red-f);} .app .dot.a{background:var(--amber-f);}
+.app .pb{padding:14px;}
+
+/* kpi */
+.app .kgrid{display:grid;gap:1px;background:var(--border);}
+.app .kgrid.k6{grid-template-columns:repeat(6,1fr);}
+.app .kgrid.k4{grid-template-columns:repeat(4,1fr);}
+.app .kpi{background:var(--card);padding:13px 13px 11px;}
+.app .kpi .lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.app .kpi .val{font-family:var(--display);font-weight:800;font-size:27px;line-height:1;letter-spacing:-.02em;
+  color:var(--text);font-variant-numeric:tabular-nums;margin-bottom:5px;}
+.app .kpi .val small{font-size:14px;font-weight:700;color:var(--muted);margin-left:1px;}
+.app .kpi .sub{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.45;}
+.app .kpi.hero{background:var(--raised);}
+.app .kpi.hero .val{font-size:38px;}
+.app .val.pos{color:var(--green);} .app .val.neg{color:var(--red);} .app .val.warn{color:var(--amber);}
+
+/* tags */
+.app .tag{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;
+  letter-spacing:.11em;font-weight:700;padding:2.5px 8px;border-radius:99px;border:1px solid;white-space:nowrap;text-transform:uppercase;}
+.app .tag.g{background:var(--green-t);color:var(--green);border-color:rgba(61,107,51,.24);}
+.app .tag.r{background:var(--red-t);color:var(--red);border-color:rgba(178,58,37,.24);}
+.app .tag.a{background:var(--amber-t);color:var(--amber);border-color:rgba(138,98,18,.28);}
+.app .tag.s{background:var(--stone-t);color:var(--stone);border-color:rgba(110,99,87,.30);}
+.app .tag.x{background:rgba(31,25,19,.05);color:var(--muted);border-color:var(--border);}
+.app .tag.k{background:var(--accent-t);color:var(--accent);border-color:rgba(123,58,135,.22);}
+.app .tag.big{font-size:11px;padding:6px 14px;letter-spacing:.13em;}
+
+/* buttons */
+.app .btn{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  padding:6px 13px;border-radius:var(--r-sm);border:1px solid var(--border);background:transparent;color:var(--muted);}
+.app .btn.k{background:var(--accent);border-color:var(--accent);color:#FBF3FC;}
+.app .btn.ol{border-color:var(--accent);color:var(--accent);background:var(--accent-t);}
+.app .btn.on-ink{border-color:rgba(245,238,227,.22);color:rgba(245,238,227,.72);}
+.app .btn.sm{font-size:8px;padding:3px 9px;}
+.app .btn.add{width:100%;border:1px dashed var(--border);color:var(--muted);padding:9px;background:transparent;}
+.app .btn.add:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-t);}
+
+/* filter bar — inside the panel, under the dark header */
+.app .filters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 13px;
+  background:var(--sunk);border-bottom:1px solid var(--border);}
+.app .filters .fl{font-family:var(--mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-right:2px;}
+.app .chip{font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:3.5px 10px;border-radius:99px;
+  border:1px solid var(--border);background:var(--card);color:var(--muted);}
+.app .chip.on{background:var(--accent);border-color:var(--accent);color:#FBF3FC;}
+.app .chip.spacer{margin-left:auto;border:none;background:none;color:var(--faint);}
+
+/* tables */
+.app .tblwrap{overflow-x:auto;}
+.app table{width:100%;border-collapse:collapse;min-width:880px;}
+.app th{font-family:var(--mono);font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);
+  background:var(--sunk);border-bottom:1px solid var(--border);padding:7px 9px;text-align:left;white-space:nowrap;}
+.app th.r{text-align:right;}
+.app td{padding:6px 9px;border-bottom:1px solid rgba(31,25,19,.07);font-size:12px;color:var(--text);vertical-align:middle;}
+.app td.r{text-align:right;}
+.app tr:hover td{background:rgba(123,58,135,.035);}
+.app tr.paused td{opacity:.5;}
+.app tr.tot td{background:var(--sunk);border-top:1px solid var(--border);border-bottom:none;
+  font-family:var(--mono);font-size:10px;letter-spacing:.05em;font-weight:700;color:var(--text);}
+
+/* inline-edit cell */
+.app .ie{background:transparent;border:1px solid transparent;color:var(--text);font-family:var(--mono);
+  font-size:11px;padding:3px 5px;border-radius:var(--r-sm);width:100%;}
+.app .ie:hover{border-color:var(--border);background:var(--raised);}
+.app .ie:focus{outline:none;background:var(--raised);border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-t);}
+.app .ie.r{text-align:right;}
+.app .ie.empty{color:var(--faint);border-style:dashed;border-color:rgba(31,25,19,.18);}
+.app .ie.demo-focus{background:var(--raised);border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-t);}
+.app .ie.demo-hover{border-color:var(--border);background:var(--raised);}
+.app select.ie{cursor:pointer;-webkit-appearance:none;appearance:none;padding-right:14px;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 8px) calc(50% + 1px),calc(100% - 4px) calc(50% + 1px);
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat;}
+/* status select — colour driven by value */
+.app .st-activo{color:var(--green);background:var(--green-t);border-color:rgba(61,107,51,.2)!important;font-weight:700;}
+.app .st-pausado{color:var(--muted);background:rgba(31,25,19,.05);border-color:var(--border)!important;}
+.app .st-pendiente{color:var(--amber);background:var(--amber-t);border-color:rgba(138,98,18,.24)!important;font-weight:700;}
+.app .st-pagado{color:var(--stone);background:var(--stone-t);border-color:rgba(110,99,87,.32)!important;font-weight:700;}
+
+/* frequency + monthly equivalent */
+.app .eq{font-family:var(--mono);font-size:11px;color:var(--text);font-variant-numeric:tabular-nums;}
+.app .eq .div{color:var(--faint);font-size:9px;letter-spacing:.04em;margin-right:5px;}
+.app .eq.none{color:var(--faint);}
+.app .delta{font-family:var(--mono);font-size:8.5px;letter-spacing:.04em;padding:1px 5px;border-radius:3px;margin-left:5px;}
+.app .delta.up{color:var(--red);background:var(--red-t);}
+.app .delta.down{color:var(--green);background:var(--green-t);}
+.app .caret{background:none;border:none;color:var(--faint);font-family:var(--mono);font-size:10px;padding:0 3px;}
+.app tr.drawer td{background:var(--sunk);border-bottom:1px solid var(--border);padding:0;}
+.app .drawer-in{padding:9px 34px;display:grid;gap:5px;}
+.app .drawer-in .dh{font-family:var(--mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+.app .drawer-in .dl{display:grid;grid-template-columns:78px 92px 1fr;gap:10px;font-family:var(--mono);font-size:10.5px;color:var(--muted);}
+.app .drawer-in .dl b{color:var(--text);font-weight:400;font-variant-numeric:tabular-nums;}
+
+/* breakdown bars */
+.app .bar{display:flex;align-items:center;gap:9px;padding:3.5px 0;}
+.app .bar .bl{font-size:11.5px;color:var(--muted);width:118px;flex-shrink:0;}
+.app .bar .bt{flex:1;height:13px;background:rgba(31,25,19,.07);border-radius:3px;overflow:hidden;}
+.app .bar .bf{height:100%;border-radius:3px;display:flex;align-items:center;padding:0 6px;
+  font-family:var(--mono);font-size:8.5px;font-weight:700;color:#F8F4EC;white-space:nowrap;overflow:hidden;}
+.app .bar .ba{font-family:var(--mono);font-size:10.5px;color:var(--text);width:74px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums;}
+.app .bar .ba em{font-style:normal;color:var(--faint);font-size:9px;}
+
+/* upfront ledger */
+.app .ledger{display:grid;gap:0;}
+.app .lrow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(31,25,19,.07);}
+.app .lrow .ll{flex:1;font-size:12.5px;}
+.app .lrow .lv{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;}
+.app .lrow.sum{border-bottom:none;border-top:1px solid var(--border);margin-top:4px;padding-top:9px;}
+.app .lrow.sum .ll{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);}
+.app .lrow.sum .lv{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.01em;}
+.app .lrow.flagged{background:var(--red-t);margin:4px -8px;padding:6px 8px;border-radius:var(--r-sm);border-bottom:none;}
+.app .lrow.flagged .ll{color:var(--red);}
+.app .lrow.flagged .lv{color:var(--red);text-decoration:line-through;}
+
+/* insight line */
+.app .insight{background:var(--sunk);border:1px solid var(--border);border-left:3px solid var(--accent);
+  border-radius:var(--r);padding:11px 14px;font-size:13px;line-height:1.7;color:var(--muted);}
+.app .insight b{color:var(--text);font-weight:600;}
+
+/* guideline strip */
+.app .guide{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 13px;
+  background:var(--amber-t);border-top:1px solid rgba(138,98,18,.18);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--amber);}
+.app .guide b{font-weight:700;}
+.app .guide .why{color:rgba(138,98,18,.72);letter-spacing:0;font-family:var(--body);font-size:11.5px;}
+
+/* progress */
+.app .prog{height:5px;background:rgba(31,25,19,.09);border-radius:3px;overflow:hidden;}
+.app .prog i{display:block;height:100%;border-radius:3px;}
+
+/* room group */
+.app .room{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 13px;
+  background:var(--sunk);border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--text);}
+.app .room .cnt{color:var(--muted);letter-spacing:.06em;}
+
+/* project cards */
+.app .pcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--border);}
+.app .pcard{background:var(--card);padding:13px;display:grid;gap:9px;}
+.app .pcard h4{margin:0;font-size:14px;font-weight:600;}
+.app .pcard .pmeta{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--muted);display:flex;justify-content:space-between;}
+
+/* comparison */
+.app .cmp{width:100%;border-collapse:collapse;min-width:640px;}
+.app .cmp th{background:var(--ink);color:rgba(245,238,227,.55);padding:9px;text-align:right;}
+.app .cmp th:first-child{text-align:left;}
+.app .cmp th.win{color:var(--accent-l);}
+.app .cmp td{padding:7px 9px;text-align:right;font-family:var(--mono);font-size:11.5px;font-variant-numeric:tabular-nums;
+  border-bottom:1px solid rgba(31,25,19,.07);}
+.app .cmp td:first-child{text-align:left;font-family:var(--body);font-size:12.5px;color:var(--muted);}
+.app .cmp td.best{box-shadow:inset 0 -2px 0 var(--accent);color:var(--text);font-weight:700;}
+.app .cmp tr.same td{background:rgba(31,25,19,.03);color:var(--faint);font-style:italic;text-align:left;}
+
+/* phone */
+.phones{display:flex;gap:26px;flex-wrap:wrap;}
+.phone{width:322px;flex-shrink:0;}
+.phone .glass{background:var(--bg);border-radius:22px;overflow:hidden;border:1px solid rgba(28,22,17,.35);box-shadow:var(--sh-3);}
+.phone .cap{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--pg-mut);margin-top:10px;}
+.app.narrow{font-size:12.5px;}
+.app .mcard{background:var(--card);border-bottom:1px solid var(--border);padding:9px 12px 9px 14px;position:relative;display:grid;gap:5px;}
+.app .mcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;}
+.app .mcard.s-activo::before{background:var(--green-f);}
+.app .mcard.s-pendiente::before{background:var(--amber-f);}
+.app .mcard.s-pausado::before{background:rgba(31,25,19,.18);}
+.app .mcard .m1{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
+.app .mcard .m1 b{font-weight:600;font-size:13px;}
+.app .mcard .m1 span{font-family:var(--mono);font-size:13px;font-variant-numeric:tabular-nums;}
+.app .mcard .m1 span.empty{color:var(--faint);}
+.app .mcard .m2{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:.03em;}
+.app .mbar{display:flex;gap:5px;padding:9px 12px;overflow-x:auto;background:var(--sunk);border-bottom:1px solid var(--border);scrollbar-width:none;}
+.app .mbar::-webkit-scrollbar{display:none;}
+.app .mnav{display:flex;background:var(--ink);border-top:1px solid var(--border-ink);}
+.app .mnav button{flex:1;background:none;border:none;padding:9px 2px 10px;font-family:var(--mono);
+  font-size:7.5px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,238,227,.34);display:grid;gap:4px;justify-items:center;}
+.app .mnav button.on{color:var(--accent-l);}
+.app .mnav button i{display:block;width:14px;height:2px;background:currentColor;border-radius:2px;opacity:.7;}
+
+/* state switcher (spec chrome) */
+.states{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.states button{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  padding:7px 13px;border-radius:99px;border:1px solid var(--pg-rule);
+  background:transparent;color:var(--pg-mut);cursor:pointer;transition:background .15s,color .15s,border-color .15s;
+}
+.states button[aria-pressed="true"]{background:var(--pg-accent);border-color:var(--pg-accent);color:var(--pg);}
+
+.res-split{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;}
+
+@media (max-width:900px){
+  .app .kgrid.k6{grid-template-columns:repeat(3,1fr);}
+  .res-split{grid-template-columns:1fr;}
+}
+@media (max-width:820px){
+  .app .kgrid.k6{grid-template-columns:repeat(2,1fr);}
+  .app .kgrid.k4{grid-template-columns:repeat(2,1fr);}
+  .wrap{padding:0 16px 90px;}
+  .masthead{padding:40px 0 26px;}
+}
+</style>
+
+</head>
+<body>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Independence · Visual structure · 9 Aug 2026</div>
+  <h1>How I'd build this,<br>screen by screen.</h1>
+  <p class="lede">A complete visual structure for the moving-out calculator: <strong>a palette and token block</strong>, a component sheet, all six tabs, the mobile answer to the dense grid, and a proposal for scenario comparison. Everything below is rendered in the system it proposes — the spec is built out of its own components. Prose is English, UI strings are Spanish, per <strong>CLAUDE.md § Language</strong>.</p>
+  <div class="meta-strip">
+    <span>React + TS + Tailwind on CSS variables</span>
+    <span>Light-mode product</span>
+    <span>es-ES · EUR</span>
+    <span>PWA, offline, localStorage</span>
+    <span>Palette proposed — swappable in one block</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <ul>
+    <li><a href="#thesis">Thesis</a></li>
+    <li><a href="#sistema">System</a></li>
+    <li><a href="#componentes">Components</a></li>
+    <li><a href="#resumen">Resumen</a></li>
+    <li><a href="#costes">Costes</a></li>
+    <li><a href="#muebles">Muebles</a></li>
+    <li><a href="#proyectos">Proyectos</a></li>
+    <li><a href="#historial">Historial</a></li>
+    <li><a href="#comparar">Comparar</a></li>
+    <li><a href="#movil">Mobile</a></li>
+    <li><a href="#decisiones">Decisions</a></li>
+    <li><a href="#orden">Build order</a></li>
+  </ul>
+</nav>
+
+<!-- ══════════════════════════════════════════ THESIS -->
+<section class="plate" id="thesis">
+  <div class="plate-head">
+    <div class="eyebrow">Thesis</div>
+    <h2>One rule holds the whole design together</h2>
+    <p>The app answers a single question, and colour is how it answers. So colour gets split into two jobs that never overlap.</p>
+  </div>
+
+  <div class="cols-2">
+    <div class="prose">
+      <p><strong>Semantic colour means something.</strong> Green, red and amber are reserved — permanently — for sign and state. Positive balance, negative balance, marginal. They are never used to decorate a heading, brand a button, or fill a chart just because a chart needs fills.</p>
+      <p><strong>Accent colour means interaction.</strong> A single mulberry carries focus rings, the active tab, links, the add-row, the primary button. It never carries meaning. If a number is mulberry, that is a bug.</p>
+      <p class="note"><b>Why it matters here:</b> the brief asks the user to read the answer from colour before reading a digit. That only works if the answer is the <em>only</em> thing coloured. Every generic finance dashboard breaks this by colouring categories, and then green stops meaning "good".</p>
+      <p>The consequence for a warm palette specifically: the ground is plaster, the ink is warm, and the semantics have rotated to olive, brick and ochre — which uses up most of the warm end of the wheel. The accent has to sit clear of all three, so it goes to <strong>mulberry</strong>: the one warm-leaning hue with real distance from every meaning, and rich enough on putty to read as a considered choice rather than a leftover.</p>
+    </div>
+    <div>
+      <div class="frame">
+        <div class="app">
+          <div class="body" style="display:grid;gap:12px;">
+            <div class="panel">
+              <div class="ph"><div class="ph-l"><span class="dot g"></span>Veredicto</div><div class="ph-r">Compartir con Ana</div></div>
+              <div class="pb" style="display:grid;gap:11px;justify-items:start;">
+                <span class="tag g big">✓ Te lo puedes permitir</span>
+                <span class="tag a big">⚠ Justo</span>
+                <span class="tag r big">✗ Te faltan 340 €/mes</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:4px;border-top:1px solid var(--border);width:100%;">
+                  <span class="tag k">Escenario activo</span>
+                  <span class="tag k">+ Añadir concepto</span>
+                  <span class="tag k">Comparar</span>
+                </div>
+                <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;">
+                  Arriba: significado. Abajo: interacción.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frame-cap"><span>Semantic vs. accent, side by side</span><span>Both survive at 8&nbsp;px</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ SISTEMA -->
+<section class="plate" id="sistema">
+  <div class="plate-head">
+    <div class="eyebrow">System</div>
+    <h2>The token block is the deliverable</h2>
+    <p>Every colour in the app resolves through a variable in one <code>:root</code> block, and Tailwind consumes the variables rather than hex values. Swapping the palette later is one block, not a sweep. No raw hex exists outside it.</p>
+  </div>
+
+  <h3 class="sub">Ground &amp; ink — warm plaster, not paper</h3>
+  <div class="sw-grid">
+    <div class="sw"><i style="background:#EBE4D9"></i><div><b>--bg</b><em>#EBE4D9</em><p>App ground. Warm putty — a painted wall, held back from yellow so the amber stays legible on it.</p></div></div>
+    <div class="sw"><i style="background:#F8F4EC"></i><div><b>--card</b><em>#F8F4EC</em><p>Panel and KPI body.</p></div></div>
+    <div class="sw"><i style="background:#DFD6C6"></i><div><b>--sunk</b><em>#DFD6C6</em><p>Filter bars, table heads, totals row, insight box.</p></div></div>
+    <div class="sw"><i style="background:#FFFDF8"></i><div><b>--raised</b><em>#FFFDF8</em><p>Focused input, hero KPI. Warm white — pure #FFF would punch a cold hole in the page.</p></div></div>
+    <div class="sw"><i style="background:#1E1813"></i><div><b>--ink</b><em>#1E1813</em><p>Panel headers, app header. Warm near-black, closer to bitumen than to neutral.</p></div></div>
+    <div class="sw"><i style="background:#2A231C"></i><div><b>--ink-2</b><em>#2A231C</em><p>Tab strip.</p></div></div>
+    <div class="sw"><i style="background:#3A3128"></i><div><b>--ink-3</b><em>#3A3128</em><p>Breakdown bar fills, at descending opacity.</p></div></div>
+    <div class="sw"><i style="background:#6E6357"></i><div><b>--muted</b><em>#6E6357</em><p>Labels, secondary numbers. 5.3:1 on card.</p></div></div>
+    <div class="sw"><i style="background:#A79B8B"></i><div><b>--faint</b><em>#A79B8B</em><p>Empty amounts and divisor annotations only.</p></div></div>
+  </div>
+
+  <h3 class="sub">Accent — interaction only</h3>
+  <div class="sw-grid">
+    <div class="sw"><i style="background:#7B3A87"></i><div><b>--accent</b><em>#7B3A87</em><p>Mulberry. Focus ring, active tab, primary button, links.</p></div></div>
+    <div class="sw"><i style="background:#C88ED6"></i><div><b>--accent-l</b><em>#C88ED6</em><p>The accent on ink — headers and tabs.</p></div></div>
+    <div class="sw"><i style="background:#F2E6F4"></i><div><b>--accent-t</b><em>#F2E6F4</em><p>Focus glow, chip fill, add-row hover.</p></div></div>
+  </div>
+
+  <h3 class="sub">Semantic — meaning only, tested at 8&nbsp;px</h3>
+  <div class="sw-grid">
+    <div class="sw"><i style="background:#3D6B33"></i><div><b>--green</b><em>#3D6B33</em><p>Positive balance, activo. Olive-forest rather than emerald, so it belongs to the warm ground.</p></div></div>
+    <div class="sw"><i style="background:#E6EDDA"></i><div><b>--green-t</b><em>#E6EDDA</em><p>Pill and select fill.</p></div></div>
+    <div class="sw"><i style="background:#6B9243"></i><div><b>--green-f</b><em>#6B9243</em><p>Bar fill and status dot only — never text.</p></div></div>
+    <div class="sw"><i style="background:#B23A25"></i><div><b>--red</b><em>#B23A25</em><p>Brick. Deficit, and the agency-fee flag.</p></div></div>
+    <div class="sw"><i style="background:#F7E4DC"></i><div><b>--red-t</b><em>#F7E4DC</em><p></p></div></div>
+    <div class="sw"><i style="background:#CE5A3E"></i><div><b>--red-f</b><em>#CE5A3E</em><p>Fills and dots only.</p></div></div>
+    <div class="sw"><i style="background:#8A6212"></i><div><b>--amber</b><em>#8A6212</em><p>Ochre. Marginal, pendiente, the max-rent guideline. Dark enough to read at 8&nbsp;px on plaster.</p></div></div>
+    <div class="sw"><i style="background:#F6E8CB"></i><div><b>--amber-t</b><em>#F6E8CB</em><p></p></div></div>
+    <div class="sw"><i style="background:#C9901A"></i><div><b>--amber-f</b><em>#C9901A</em><p>Fills and dots only.</p></div></div>
+    <div class="sw"><i style="background:#6E6357"></i><div><b>--stone</b><em>#6E6357</em><p><em>Pagado</em> and <em>pausado</em> — settled or excluded. Not a hue, because neither is good or bad.</p></div></div>
+    <div class="sw"><i style="background:#E7DFD1"></i><div><b>--stone-t</b><em>#E7DFD1</em><p></p></div></div>
+  </div>
+
+  <h3 class="sub">Type — three faces, three fixed roles</h3>
+  <div>
+    <div class="type-row">
+      <div class="role">Display</div>
+      <div>
+        <div style="font-family:var(--display);font-weight:800;font-size:34px;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;">+88,00 <span style="font-size:18px;color:var(--pg-mut);">€/mes</span></div>
+        <div class="spec" style="margin-top:6px;">Archivo Expanded 800 · KPI values and titles only · tabular-nums always · never below 18&nbsp;px</div>
+      </div>
+    </div>
+    <div class="type-row">
+      <div class="role">Mono</div>
+      <div>
+        <div style="font-family:var(--mono);font-size:13px;letter-spacing:.02em;">330,00 € ÷2 &nbsp; BIMESTRAL &nbsp; 58,00 €</div>
+        <div class="spec" style="margin-top:6px;">IBM Plex Mono · every label, column head, table input, tag, button, amount · carries the personality</div>
+      </div>
+    </div>
+    <div class="type-row">
+      <div class="role">Body</div>
+      <div>
+        <div style="font-size:14px;">Con este piso te sobran 88 € al mes. El colchón ya está cubierto.</div>
+        <div class="spec" style="margin-top:6px;">IBM Plex Sans · prose, notes, the insight line, row labels · 12–13&nbsp;px in the app</div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:20px;"><b>Note on this page:</b> font CDNs are blocked in a published artifact, so the mockups below render in system fallbacks. The stacks in the token block name the production faces first — install them locally in the Vite build (<code>@fontsource</code>) rather than linking Google Fonts, since the app must work offline.</p>
+  </div>
+
+  <h3 class="sub">The block itself — <code>src/styles/tokens.css</code></h3>
+  <pre class="code">:root{
+  <span class="c">/* ── ground ─────────────────────────────── */</span>
+  --bg:<span class="v">#EBE4D9</span>;      --card:<span class="v">#F8F4EC</span>;   --sunk:<span class="v">#DFD6C6</span>;   --raised:<span class="v">#FFFDF8</span>;
+  --ink:<span class="v">#1E1813</span>;     --ink-2:<span class="v">#2A231C</span>;  --ink-3:<span class="v">#3A3128</span>;
+  --text:<span class="v">#1F1913</span>;    --muted:<span class="v">#6E6357</span>;  --faint:<span class="v">#A79B8B</span>;
+  --border:rgba(31,25,19,.15);   --border-ink:rgba(248,244,236,.10);
+
+  <span class="c">/* ── accent — interaction, never meaning ── */</span>
+  --accent:<span class="v">#7B3A87</span>;  --accent-l:<span class="v">#C88ED6</span>; --accent-t:<span class="v">#F2E6F4</span>;
+
+  <span class="c">/* ── semantic — meaning, never decoration ─ */</span>
+  --green:<span class="v">#3D6B33</span>;   --green-t:<span class="v">#E6EDDA</span>;  --green-f:<span class="v">#6B9243</span>;
+  --red:<span class="v">#B23A25</span>;     --red-t:<span class="v">#F7E4DC</span>;    --red-f:<span class="v">#CE5A3E</span>;
+  --amber:<span class="v">#8A6212</span>;   --amber-t:<span class="v">#F6E8CB</span>;  --amber-f:<span class="v">#C9901A</span>;
+  --stone:<span class="v">#6E6357</span>;   --stone-t:<span class="v">#E7DFD1</span>;
+
+  <span class="c">/* ── form ───────────────────────────────── */</span>
+  --r-sm:4px; --r:8px; --r-lg:12px;
+  --sh-1:0 1px 2px rgba(28,22,17,.08);
+  --sh-2:0 4px 14px rgba(28,22,17,.12);
+  --sh-3:0 22px 55px rgba(28,22,17,.30);
+
+  <span class="c">/* ── type ───────────────────────────────── */</span>
+  --display:'Archivo Expanded','Archivo',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+
+<span class="c">/* tailwind.config.ts — Tailwind consumes the variables, owns no colour */</span>
+theme:{ extend:{
+  colors:{ bg:'var(--bg)', card:'var(--card)', ink:'var(--ink)',
+           accent:'var(--accent)', green:'var(--green)', red:'var(--red)', amber:'var(--amber)' },
+  fontFamily:{ display:'var(--display)', mono:'var(--mono)', body:'var(--body)' },
+}}</pre>
+  <p class="note" style="margin-top:18px;"><b>Swapping the palette</b> means editing nine lines. If the mulberry is wrong, try <code>#8E3050</code> (wine — warmer, but check it against the brick red at 8&nbsp;px) or <code>#5B4BA8</code> (warm indigo — cooler, and the safest distance from every semantic). Do <em>not</em> move the accent into rust, ochre or olive: on this ground they are indistinguishable from red, amber and green, and the accent would start looking like a verdict.</p>
+  <p class="note" style="margin-top:16px;"><b>Warming the ground moved three other things.</b> Pure white left the palette — <code>--raised</code> is now <code>#FFFDF8</code>, because a true white input on plaster reads as a hole rather than a lift. The semantics all rotated toward earth: olive-forest, brick, ochre. And the ink went warm too (<code>#1E1813</code>), which matters more than it sounds — a neutral black header over a warm ground is the single thing that makes a warm palette look accidental.</p>
+</section>
+
+<!-- ══════════════════════════════════════════ COMPONENTES -->
+<section class="plate" id="componentes">
+  <div class="plate-head">
+    <div class="eyebrow">Components</div>
+    <h2>Component sheet</h2>
+    <p>Ten components carry every screen. Built once in <code>src/components/</code>, and nothing in a tab reaches past them for a colour.</p>
+  </div>
+
+  <div class="frame">
+    <div class="app">
+      <div class="body" style="display:grid;gap:12px;">
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Panel · cabecera oscura</div><div class="ph-r"><button class="btn on-ink">Acción</button></div></div>
+          <div class="pb" style="font-size:12.5px;color:var(--muted);">Rounded card, light body, ink header bar. The micro-label is mono, 9&nbsp;px, 0.2em tracking, uppercase. The dot carries panel state — accent when idle, semantic when it has something to say. Actions sit right in the same bar; there is no second toolbar.</div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>KPI · valor por signo</div></div>
+          <div class="kgrid k4">
+            <div class="kpi"><div class="lbl">Entradas / mes</div><div class="val">730<small>,00 €</small></div><div class="sub">3 conceptos · ninguno fijo</div></div>
+            <div class="kpi"><div class="lbl">Salidas / mes</div><div class="val">642<small>,00 €</small></div><div class="sub">sobre 11 de 14 con importe</div></div>
+            <div class="kpi hero"><div class="lbl">Balance</div><div class="val pos">+88<small>,00 €</small></div><div class="sub">entradas − salidas</div></div>
+            <div class="kpi hero"><div class="lbl">Balance</div><div class="val neg">−340<small>,00 €</small></div><div class="sub">entradas − salidas</div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Pastillas · veredicto y estado</div></div>
+          <div class="pb" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
+            <span class="tag g">✓ Te lo puedes permitir</span>
+            <span class="tag a">⚠ Justo</span>
+            <span class="tag r">✗ Te faltan 340 €/mes</span>
+            <span class="tag s">✓ Pagado</span>
+            <span class="tag x">Pausado</span>
+            <span class="tag k">Escenario</span>
+            <span class="tag g">Devolvible</span>
+            <span class="tag r">No deberías pagarlo</span>
+            <span class="tag a">Sin importe</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Botones</div></div>
+          <div class="pb" style="display:grid;gap:9px;">
+            <div style="display:flex;gap:7px;flex-wrap:wrap;">
+              <button class="btn k">Nuevo escenario</button>
+              <button class="btn ol">Comparar</button>
+              <button class="btn">Exportar</button>
+              <button class="btn">Importar</button>
+              <button class="btn sm">Sólo esenciales</button>
+            </div>
+            <button class="btn add">+ Añadir concepto</button>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.06em;">La fila de añadir es discontinua y ocupa todo el ancho, al pie de la tabla. No hay botón flotante.</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Celda editable · reposo / hover / foco / vacía</div></div>
+          <div class="pb">
+            <div class="tblwrap">
+              <table style="min-width:520px;">
+                <thead><tr><th>Concepto</th><th>Reposo</th><th>Hover</th><th>Foco</th><th>Vacía</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td style="font-size:12.5px;">Alquiler</td>
+                    <td><input class="ie r" value="330,00 €" readonly aria-label="reposo"></td>
+                    <td><input class="ie r demo-hover" value="330,00 €" readonly aria-label="hover"></td>
+                    <td><input class="ie r demo-focus" value="330,00" readonly aria-label="foco"></td>
+                    <td><input class="ie r empty" value="— —" readonly aria-label="vacía"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.06em;margin-top:9px;">
+              El foco quita el formato de moneda y deja el número crudo. Escribir escribe en el estado. No hay botón de guardar.
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Selector de estado · el color lo decide el valor</div></div>
+          <div class="pb" style="display:grid;gap:9px;">
+            <div style="display:flex;gap:9px;flex-wrap:wrap;">
+              <select class="ie st-activo" style="width:auto;"><option>Activo</option></select>
+              <select class="ie st-pausado" style="width:auto;"><option>Pausado</option></select>
+              <select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select>
+              <select class="ie st-pagado" style="width:auto;"><option>✓ Pagado</option></select>
+            </div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.06em;line-height:1.7;">
+              Activo cuenta · pendiente aún no · pagado ya no · pausado no cuenta a propósito.<br>
+              Los dos últimos no son buenos ni malos, así que no llevan color: van en piedra. Se distinguen entre ellos por el peso y el ✓, y porque la fila pausada además baja al 50 %.
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Barra de reparto</div></div>
+          <div class="pb">
+            <div class="bar"><span class="bl">Vivienda</span><span class="bt"><span class="bf" style="width:55%;background:var(--ink-3);">55 %</span></span><span class="ba">355,00 €</span></div>
+            <div class="bar"><span class="bl">Alimentación</span><span class="bt"><span class="bf" style="width:20%;background:var(--ink-3);opacity:.8;">20 %</span></span><span class="ba">130,00 €</span></div>
+            <div class="bar"><span class="bl">Suministros</span><span class="bt"><span class="bf" style="width:15%;background:var(--ink-3);opacity:.62;">15 %</span></span><span class="ba">99,00 €</span></div>
+            <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.06em;margin-top:7px;">Las barras son de un solo tono en distintas opacidades. Las categorías no llevan color propio: el color está reservado.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Component sheet · rest states</span><span>Panel · KPI · tag · button · add-row · edit cell · status select · bar</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════ RESUMEN -->
+<section class="plate" id="resumen">
+  <div class="plate-head">
+    <div class="eyebrow">Screen 1 of 6 · highest priority</div>
+    <h2>Resumen — the answer in three seconds</h2>
+    <p>Three real states, switchable below. They are three different flats, not three moods: with 730&nbsp;€/month coming in, sharing works and living alone does not, and the screen should say so without flinching.</p>
+  </div>
+
+  <div class="states" role="group" aria-label="Estado de la pantalla">
+    <button type="button" data-state="a" aria-pressed="true">Compartir con Ana · 330 €</button>
+    <button type="button" data-state="b" aria-pressed="false">Compartir Chamberí · 430 €</button>
+    <button type="button" data-state="c" aria-pressed="false">Estudio Vallecas · 720 €</button>
+  </div>
+
+  <div class="frame">
+    <div class="app" id="resumen-app">
+      <div class="hdr">
+        <div class="hdr-id"><b>INDEPENDENCE</b><em>Madrid · EUR</em></div>
+        <div class="hdr-r">
+          <select class="sel-dark acc" aria-label="Escenario"><option id="r-scenario">Compartir con Ana · 330 €</option></select>
+          <select class="sel-dark" aria-label="Situación"><option>Estudiante</option><option>Becario</option><option>Empleado</option><option>Autónomo</option></select>
+          <button class="btn on-ink">Comparar</button>
+          <button class="btn on-ink">Exportar</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab on">Resumen</button><button class="tab">Costes</button><button class="tab">Muebles</button>
+        <button class="tab">Proyectos</button><button class="tab">Historial</button><button class="tab">Ajustes</button>
+      </div>
+
+      <div class="body" style="display:grid;gap:12px;">
+
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-l"><span class="dot g" id="r-dot"></span>Veredicto</div>
+            <div class="ph-r" id="r-since">Escenario creado el 12/05/2026 · desviación <span style="color:var(--amber-f);">+18 €/mes</span></div>
+          </div>
+          <div class="pb" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <span class="tag g big" id="r-verdict">✓ Te lo puedes permitir</span>
+            <span style="font-size:12.5px;color:var(--muted);" id="r-verdict-sub">Con los importes de hoy y sin contar la fianza como gasto.</span>
+          </div>
+          <div class="kgrid k6">
+            <div class="kpi"><div class="lbl">Entradas / mes</div><div class="val">730<small>,00 €</small></div><div class="sub">beca · familia · trabajo<br>ninguno es fijo</div></div>
+            <div class="kpi"><div class="lbl">Salidas / mes</div><div class="val" id="r-out">642<small>,00 €</small></div><div class="sub" id="r-out-sub">sobre 11 de 14 conceptos<br>con importe</div></div>
+            <div class="kpi hero"><div class="lbl">Balance</div><div class="val pos" id="r-balance">+88<small>,00 €</small></div><div class="sub" id="r-balance-sub">12 % de las entradas</div></div>
+            <div class="kpi"><div class="lbl">Dinero al entrar</div><div class="val" id="r-upfront">1.695<small>,00 €</small></div><div class="sub">fianza incluida</div></div>
+            <div class="kpi"><div class="lbl">Gasto real</div><div class="val" id="r-spend">1.365<small>,00 €</small></div><div class="sub" id="r-spend-sub">sin la fianza, que vuelve</div></div>
+            <div class="kpi"><div class="lbl" id="r-runway-lbl">Colchón</div><div class="val" id="r-runway">Cubierto</div><div class="sub" id="r-runway-sub">objetivo 1.900 € · te quedan<br>4.705 € tras entrar</div></div>
+          </div>
+          <div class="guide">
+            <b>Alquiler máx. orientativo · 234 €/mes</b>
+            <span class="why">Regla del 32 % sobre 730 €/mes. Es una referencia, no un límite — los tres escenarios la superan y aun así dos salen.</span>
+          </div>
+        </div>
+
+        <div class="res-split">
+          <div class="panel">
+            <div class="ph"><div class="ph-l"><span class="dot"></span>A dónde va el dinero</div><div class="ph-r" id="r-bars-total">642,00 €/mes</div></div>
+            <div class="pb" id="r-bars">
+              <div class="bar"><span class="bl">Vivienda</span><span class="bt"><span class="bf" style="width:55%;background:var(--ink-3);">55 %</span></span><span class="ba">355,00 €</span></div>
+              <div class="bar"><span class="bl">Alimentación</span><span class="bt"><span class="bf" style="width:20%;background:var(--ink-3);opacity:.86;">20 %</span></span><span class="ba">130,00 €</span></div>
+              <div class="bar"><span class="bl">Suministros</span><span class="bt"><span class="bf" style="width:15%;background:var(--ink-3);opacity:.72;">15 %</span></span><span class="ba">99,00 €</span></div>
+              <div class="bar"><span class="bl">Consumibles</span><span class="bt"><span class="bf" style="width:4%;background:var(--ink-3);opacity:.58;"></span></span><span class="ba">25,00 €</span></div>
+              <div class="bar"><span class="bl">Transporte</span><span class="bt"><span class="bf" style="width:3%;background:var(--ink-3);opacity:.5;"></span></span><span class="ba">20,00 €</span></div>
+              <div class="bar"><span class="bl">Impuestos</span><span class="bt"><span class="bf" style="width:1.5%;background:var(--ink-3);opacity:.44;"></span></span><span class="ba">8,00 € <em>+1</em></span></div>
+              <div class="bar"><span class="bl">Colchón y fondos</span><span class="bt"><span class="bf" style="width:1%;background:var(--ink-3);opacity:.38;"></span></span><span class="ba">5,00 €</span></div>
+              <div class="bar"><span class="bl" style="color:var(--faint);">Ocio</span><span class="bt"></span><span class="ba" style="color:var(--faint);">pausado</span></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ph"><div class="ph-l"><span class="dot"></span>Antes de dormir allí</div><div class="ph-r">Único</div></div>
+            <div class="pb">
+              <div class="ledger" id="r-ledger">
+                <div class="lrow"><span class="ll">Fianza <span class="tag g" style="margin-left:5px;">Devolvible</span></span><span class="lv">330,00 €</span></div>
+                <div class="lrow"><span class="ll">Mes anticipado</span><span class="lv">330,00 €</span></div>
+                <div class="lrow"><span class="ll">Muebles esenciales</span><span class="lv">620,00 €</span></div>
+                <div class="lrow"><span class="ll">Altas de luz, agua e internet</span><span class="lv">145,00 €</span></div>
+                <div class="lrow"><span class="ll">Mudanza</span><span class="lv">90,00 €</span></div>
+                <div class="lrow"><span class="ll">Primera compra grande</span><span class="lv">180,00 €</span></div>
+                <div class="lrow flagged"><span class="ll">Honorarios de agencia <span class="tag r" style="margin-left:5px;">No deberías pagarlo</span></span><span class="lv">0,00 €</span></div>
+                <div class="lrow sum"><span class="ll">Dinero al entrar</span><span class="lv" id="r-l-upfront">1.695,00 €</span></div>
+                <div class="lrow sum" style="border-top:none;margin-top:0;padding-top:2px;"><span class="ll">Gasto real</span><span class="lv" id="r-l-spend">1.365,00 €</span></div>
+              </div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.05em;margin-top:9px;line-height:1.6;">
+                La fianza está en «al entrar» y fuera de «gasto real». El margen nunca la cuenta como quemada.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>En una frase</div></div>
+          <div class="pb">
+            <div class="insight" id="r-insight">Con este piso te sobran <b>88 € al mes</b>. El colchón de 1.900 € ya está cubierto por el ahorro que queda después de entrar. El punto flojo es otro: <b>5 €/mes al fondo de electrodomésticos no repone una lavadora</b> — a ese ritmo tardas nueve años en tener una de repuesto.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Resumen · desktop · 3 states</span><span>Switch above</span></div>
+
+  <div class="prose" style="margin-top:8px;">
+    <p class="note"><b>The positive state is not the negative state with a bigger number.</b> When the balance is positive, the sixth KPI stops being "meses de margen" — runway is meaningless without a deficit — and becomes <b>colchón</b>: the buffer target, whether it is covered, and what is left after moving in. Only when the balance goes negative does that slot become months of runway. The label changes with the state; the slot does not move.</p>
+    <p class="note" style="margin-top:16px;"><b>The marginal state gets its own framing too.</b> At +18&nbsp;€/month the buffer is technically covered and the answer is still fragile, so the sub-line quantifies the fragility in the units the user actually feels: <em>"un imprevisto de 200 € se come once meses de margen"</em>.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ COSTES -->
+<section class="plate" id="costes">
+  <div class="plate-head">
+    <div class="eyebrow">Screen 2 of 6 · highest priority</div>
+    <h2>Costes — one editable grid, entradas and salidas together</h2>
+    <p>No modal, no form, no save button. Amounts blank by default — the seeded checklist ships without prices on purpose, so the screen has to look correct while three-quarters empty. Scenario shown: <em>Compartir con Ana</em>.</p>
+  </div>
+
+  <div class="frame">
+    <div class="app">
+      <div class="tabs">
+        <button class="tab">Resumen</button><button class="tab on">Costes</button><button class="tab">Muebles</button>
+        <button class="tab">Proyectos</button><button class="tab">Historial</button><button class="tab">Ajustes</button>
+      </div>
+      <div class="body">
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-l"><span class="dot a"></span>Conceptos · 14</div>
+            <div class="ph-r">11 / 14 con importe · 3 sin rellenar</div>
+          </div>
+          <div class="filters">
+            <span class="fl">Dirección</span>
+            <button class="chip on">Todo</button><button class="chip">Entradas</button><button class="chip">Salidas</button>
+            <span class="fl" style="margin-left:10px;">Prioridad</span>
+            <button class="chip">Esencial</button><button class="chip">Deseable</button>
+            <span class="fl" style="margin-left:10px;">Estado</span>
+            <button class="chip">Activo</button><button class="chip">Pausado</button><button class="chip">Pendiente</button>
+            <span class="chip spacer">Categoría ▾</span>
+          </div>
+          <div class="tblwrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:20px;"></th>
+                  <th>Concepto</th><th>Tipo</th><th>Categoría</th><th>Frecuencia</th>
+                  <th>Prioridad</th><th>Estado</th><th class="r">Importe</th><th class="r">Equiv. mensual</th><th>Nota</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Alquiler" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Vivienda</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="330,00 €" readonly></td>
+                  <td class="r"><span class="eq">330,00 €</span></td>
+                  <td><input class="ie" value="" placeholder="—" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Gastos de comunidad" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Vivienda</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="25,00 €" readonly></td>
+                  <td class="r"><span class="eq">25,00 €</span></td>
+                  <td><input class="ie" value="el contrato me los pasa" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ocultar historial">▾</button></td>
+                  <td><input class="ie" value="Luz" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Suministros</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r demo-focus" value="48,00" readonly><span class="delta up">▲ 14 %</span></td>
+                  <td class="r"><span class="eq">48,00 €</span></td>
+                  <td><input class="ie" value="media anual · enero ~75 €" readonly></td>
+                </tr>
+                <tr class="drawer">
+                  <td colspan="10">
+                    <div class="drawer-in">
+                      <div class="dh">Historial de estimaciones · 3 revisiones</div>
+                      <div class="dl"><span>09/08/2026</span><b>48,00 €</b><span>+6,00 € vs anterior · +14 % vs original · subida de la tarifa regulada</span></div>
+                      <div class="dl"><span>03/07/2026</span><b>42,00 €</b><span>+0,00 € vs anterior · +0 % vs original · confirmado con la factura de junio</span></div>
+                      <div class="dl"><span>12/05/2026</span><b>42,00 €</b><span>estimación inicial · media de tres pisos parecidos</span></div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Agua" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Suministros</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Bimestral</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="58,00 €" readonly></td>
+                  <td class="r"><span class="eq"><span class="div">÷2</span>29,00 €</span></td>
+                  <td><input class="ie" value="" placeholder="—" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Internet" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Suministros</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Deseable</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="22,00 €" readonly></td>
+                  <td class="r"><span class="eq">22,00 €</span></td>
+                  <td><input class="ie" value="promo 12 m · jun-27 sube a 39 €" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Seguro de hogar" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Impuestos</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Anual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td>
+                  <td class="r"><input class="ie r" value="96,00 €" readonly></td>
+                  <td class="r"><span class="eq"><span class="div">÷12</span>8,00 €</span></td>
+                  <td><input class="ie" value="lo exige el contrato" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Tasa de basuras" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Impuestos</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Anual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td>
+                  <td class="r"><input class="ie r empty" value="— —" readonly></td>
+                  <td class="r"><span class="eq none">— —</span></td>
+                  <td><input class="ie" value="consultar en el ayuntamiento" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Consumibles" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Consumibles</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="25,00 €" readonly></td>
+                  <td class="r"><span class="eq">25,00 €</span></td>
+                  <td><input class="ie" value="detergente, papel, higiene" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Compra semanal" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Alimentación</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="130,00 €" readonly></td>
+                  <td class="r"><span class="eq">130,00 €</span></td>
+                  <td><input class="ie" value="" placeholder="—" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Primera compra grande" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Alimentación</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Único</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td>
+                  <td class="r"><input class="ie r" value="180,00 €" readonly></td>
+                  <td class="r"><span class="eq none">único</span></td>
+                  <td><input class="ie" value="no es una compra semanal" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Abono joven" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Transporte</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Esencial</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="20,00 €" readonly></td>
+                  <td class="r"><span class="eq">20,00 €</span></td>
+                  <td><input class="ie" value="" placeholder="—" readonly></td>
+                </tr>
+                <tr class="paused">
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Gimnasio" readonly></td>
+                  <td><select class="ie" style="width:auto;"><option>Salida</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Ocio</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Deseable</option></select></td>
+                  <td><select class="ie st-pausado" style="width:auto;"><option>Pausado</option></select></td>
+                  <td class="r"><input class="ie r" value="29,00 €" readonly></td>
+                  <td class="r"><span class="eq none">no cuenta</span></td>
+                  <td><input class="ie" value="" placeholder="—" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Beca" readonly></td>
+                  <td><select class="ie" style="width:auto;color:var(--green);font-weight:700;"><option>Entrada</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Ingresos</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>—</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="300,00 €" readonly></td>
+                  <td class="r"><span class="eq" style="color:var(--green);">+300,00 €</span></td>
+                  <td><input class="ie" value="hasta jun-27, sin renovación segura" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Ayuda familiar" readonly></td>
+                  <td><select class="ie" style="width:auto;color:var(--green);font-weight:700;"><option>Entrada</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Ingresos</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>—</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="250,00 €" readonly></td>
+                  <td class="r"><span class="eq" style="color:var(--green);">+250,00 €</span></td>
+                  <td><input class="ie" value="" placeholder="—" readonly></td>
+                </tr>
+                <tr>
+                  <td><button class="caret" aria-label="Ver historial">▸</button></td>
+                  <td><input class="ie" value="Trabajo ocasional" readonly></td>
+                  <td><select class="ie" style="width:auto;color:var(--green);font-weight:700;"><option>Entrada</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Ingresos</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>Mensual</option></select></td>
+                  <td><select class="ie" style="width:auto;"><option>—</option></select></td>
+                  <td><select class="ie st-activo" style="width:auto;"><option>Activo</option></select></td>
+                  <td class="r"><input class="ie r" value="180,00 €" readonly></td>
+                  <td class="r"><span class="eq" style="color:var(--green);">+180,00 €</span></td>
+                  <td><input class="ie" value="media de 6 meses · no es fijo" readonly></td>
+                </tr>
+                <tr class="tot">
+                  <td colspan="7">Total · normalizado a mes</td>
+                  <td class="r" style="color:var(--muted);">14 conceptos</td>
+                  <td class="r"><span style="color:var(--green);">+730,00</span> &nbsp;<span style="color:var(--red);">−642,00</span></td>
+                  <td><span style="color:var(--green);">= +88,00 €/mes</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:10px 13px 13px;"><button class="btn add">+ Añadir concepto</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Costes · desktop · scroll the grid sideways</span><span>Row 3 shows the focus state and the expanded price-history drawer</span></div>
+
+  <div class="cols-2" style="margin-top:8px;">
+    <p class="note"><b>Frequency and monthly equivalent, without doubling the noise.</b> <em>Importe</em> holds the number the user actually knows — "the water bill is 58&nbsp;€ every two months" — and <em>Equiv. mensual</em> holds the number they decide with. The divisor sits between them as a faint mono <code>÷2</code> / <code>÷12</code>. That one annotation removes all ambiguity about which column was normalised, at almost no visual cost, and it is the same glyph <code>toMonthly()</code> is doing internally.</p>
+    <p class="note"><b>Price history without a modal.</b> A row with more than one revision grows a small delta chip next to its amount (<code>▲ 14 %</code>). The caret expands a drawer row underneath — same table, no overlay, no lost context. Three lines of mono per revision: date, amount, and what changed against previous and original.</p>
+    <p class="note"><b>Blank amounts are the normal state, so they are styled, not hidden.</b> An empty amount renders as a dashed <code>— —</code> in faint, its equivalent shows <code>— —</code> too, and the panel header counts coverage: <em>11 / 14 con importe</em>. The Resumen KPI repeats that count under the total. A number computed from partial data is labelled as such rather than presented as final.</p>
+    <p class="note"><b>Pausado stays visible.</b> The row dims to 50 % and its equivalent reads <em>no cuenta</em> instead of a number. Removing it from the table would lose the decision; greying it keeps "I could add the gym back" one click away.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ MUEBLES -->
+<section class="plate" id="muebles">
+  <div class="plate-head">
+    <div class="eyebrow">Screen 3 of 6</div>
+    <h2>Muebles — the true minimum to move in</h2>
+    <p>Grouped by room, tracked with <em>pendiente</em> / <em>pagado</em>. The "sólo esenciales" filter is not a filter chip among others; it is the control that answers the question, so it is promoted into the panel header and given its own readout.</p>
+  </div>
+
+  <div class="frame">
+    <div class="app">
+      <div class="tabs">
+        <button class="tab">Resumen</button><button class="tab">Costes</button><button class="tab on">Muebles</button>
+        <button class="tab">Proyectos</button><button class="tab">Historial</button><button class="tab">Ajustes</button>
+      </div>
+      <div class="body" style="display:grid;gap:12px;">
+
+        <div class="kgrid k4">
+          <div class="kpi hero"><div class="lbl">Mínimo para entrar</div><div class="val warn">620<small>,00 €</small></div><div class="sub">sólo esenciales pendientes<br>9 de 24 artículos</div></div>
+          <div class="kpi"><div class="lbl">Toda la lista</div><div class="val">1.480<small>,00 €</small></div><div class="sub">esenciales + deseables</div></div>
+          <div class="kpi"><div class="lbl">Ya comprado</div><div class="val">245<small>,00 €</small></div><div class="sub">6 artículos pagados</div></div>
+          <div class="kpi"><div class="lbl">Sin precio</div><div class="val">7</div><div class="sub">artículos sin importe<br>el mínimo puede subir</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-l"><span class="dot a"></span>Lista por habitación</div>
+            <div class="ph-r"><button class="btn ol">Sólo esenciales · activo</button><button class="btn on-ink">Segunda mano ▾</button></div>
+          </div>
+
+          <div class="room"><span>Cocina</span><span class="cnt">4 pendientes · 285,00 €</span></div>
+          <div class="tblwrap">
+            <table style="min-width:640px;">
+              <tbody>
+                <tr><td style="width:44%;">Sartenes y ollas</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td><td class="r"><input class="ie r" value="65,00 €" readonly></td><td style="width:30%;"><input class="ie" value="set básico, Wallapop" readonly></td></tr>
+                <tr><td>Vajilla, cubiertos, vasos</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td><td class="r"><input class="ie r" value="45,00 €" readonly></td><td><input class="ie" value="" placeholder="—" readonly></td></tr>
+                <tr><td>Cuchillos y tabla</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pagado" style="width:auto;"><option>✓ Pagado</option></select></td><td class="r"><input class="ie r" value="28,00 €" readonly></td><td><input class="ie" value="regalo de mi hermana" readonly></td></tr>
+                <tr><td>Microondas</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td><td class="r"><input class="ie r empty" value="— —" readonly></td><td><input class="ie" value="mirar de segunda mano" readonly></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="room"><span>Dormitorio</span><span class="cnt">3 pendientes · 240,00 €</span></div>
+          <div class="tblwrap">
+            <table style="min-width:640px;">
+              <tbody>
+                <tr><td style="width:44%;">Colchón</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td><td class="r"><input class="ie r" value="180,00 €" readonly></td><td style="width:30%;"><input class="ie" value="esto sí, nuevo" readonly></td></tr>
+                <tr><td>Sábanas · dos juegos</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td><td class="r"><input class="ie r" value="40,00 €" readonly></td><td><input class="ie" value="uno puesto, otro lavando" readonly></td></tr>
+                <tr><td>Nórdico y funda</td><td><span class="tag a">Esencial</span></td><td><select class="ie st-pendiente" style="width:auto;"><option>Pendiente</option></select></td><td class="r"><input class="ie r" value="20,00 €" readonly></td><td><input class="ie" value="" placeholder="—" readonly></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="room"><span>Baño · Salón · Otros</span><span class="cnt">2 pendientes · 95,00 €</span></div>
+          <div style="padding:10px 13px 13px;"><button class="btn add">+ Añadir artículo</button></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Muebles · esenciales filter on</span><span>The "sin precio" KPI is the honesty check on the minimum</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════ PROYECTOS + HISTORIAL -->
+<section class="plate" id="proyectos">
+  <div class="plate-head">
+    <div class="eyebrow">Screen 4 of 6</div>
+    <h2>Proyectos — progress against budget <em>and</em> against date</h2>
+    <p>A project is late in two independent ways, so both get a bar. When the money bar is ahead of the time bar, the project is overspending; when it is behind, it is stalled. That relationship is the whole readout.</p>
+  </div>
+
+  <div class="frame">
+    <div class="app">
+      <div class="tabs">
+        <button class="tab">Resumen</button><button class="tab">Costes</button><button class="tab">Muebles</button>
+        <button class="tab on">Proyectos</button><button class="tab">Historial</button><button class="tab">Ajustes</button>
+      </div>
+      <div class="body">
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Proyectos de compra · 3</div><div class="ph-r"><button class="btn on-ink">+ Nuevo proyecto</button></div></div>
+          <div class="pcards">
+            <div class="pcard">
+              <h4>Amueblar salón</h4>
+              <div class="pmeta"><span>Presupuesto 450 €</span><span>7 artículos</span></div>
+              <div><div class="prog"><i style="width:63%;background:var(--ink-3);"></i></div>
+                <div class="pmeta" style="margin-top:4px;"><span>Gastado 285 €</span><span>63 %</span></div></div>
+              <div><div class="prog"><i style="width:78%;background:var(--amber-f);"></i></div>
+                <div class="pmeta" style="margin-top:4px;"><span>Hasta 30/09</span><span style="color:var(--amber);">78 % del plazo</span></div></div>
+              <span class="tag a">Vas justo de tiempo</span>
+            </div>
+            <div class="pcard">
+              <h4>Cocina mínima</h4>
+              <div class="pmeta"><span>Presupuesto 300 €</span><span>9 artículos</span></div>
+              <div><div class="prog"><i style="width:96%;background:var(--red-f);"></i></div>
+                <div class="pmeta" style="margin-top:4px;"><span>Gastado 288 €</span><span style="color:var(--red);">96 %</span></div></div>
+              <div><div class="prog"><i style="width:40%;background:var(--ink-3);"></i></div>
+                <div class="pmeta" style="margin-top:4px;"><span>Hasta 15/11</span><span>40 % del plazo</span></div></div>
+              <span class="tag r">Te queda 4 % de presupuesto y 3 artículos</span>
+            </div>
+            <div class="pcard">
+              <h4>Colchón y descanso</h4>
+              <div class="pmeta"><span>Presupuesto 260 €</span><span>3 artículos</span></div>
+              <div><div class="prog"><i style="width:0%;background:var(--ink-3);"></i></div>
+                <div class="pmeta" style="margin-top:4px;"><span>Gastado 0 €</span><span>0 %</span></div></div>
+              <div><div class="prog"><i style="width:12%;background:var(--ink-3);"></i></div>
+                <div class="pmeta" style="margin-top:4px;"><span>Hasta 01/03/27</span><span>12 % del plazo</span></div></div>
+              <span class="tag x">Sin empezar</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Proyectos</span><span>Two bars, one card — money over time</span></div>
+</section>
+
+<section class="plate" id="historial">
+  <div class="plate-head">
+    <div class="eyebrow">Screen 5 of 6</div>
+    <h2>Historial — a changelog of estimates, not a spending feed</h2>
+    <p>One log across every item, newest first. Nothing here is a transaction; every line is a revision of what the user <em>thinks</em> something will cost. The scenario-level drift sits at the top, because that is the question this tab exists to answer.</p>
+  </div>
+
+  <div class="frame">
+    <div class="app">
+      <div class="tabs">
+        <button class="tab">Resumen</button><button class="tab">Costes</button><button class="tab">Muebles</button>
+        <button class="tab">Proyectos</button><button class="tab on">Historial</button><button class="tab">Ajustes</button>
+      </div>
+      <div class="body" style="display:grid;gap:12px;">
+
+        <div class="kgrid k4">
+          <div class="kpi hero"><div class="lbl">Desviación del escenario</div><div class="val neg">+18<small>,00 €/mes</small></div><div class="sub">frente al 12/05/2026<br>cuando lo creaste</div></div>
+          <div class="kpi"><div class="lbl">Revisiones</div><div class="val">17</div><div class="sub">en 9 conceptos</div></div>
+          <div class="kpi"><div class="lbl">Mayor subida</div><div class="val">Luz</div><div class="sub">+6,00 € · +14 % desde mayo</div></div>
+          <div class="kpi"><div class="lbl">Última revisión</div><div class="val">Hoy</div><div class="sub">09/08/2026</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="ph"><div class="ph-l"><span class="dot"></span>Todas las revisiones</div><div class="ph-r">Más recientes primero</div></div>
+          <div class="filters">
+            <span class="fl">Ver</span>
+            <button class="chip on">Todo</button><button class="chip">Sólo subidas</button><button class="chip">Sólo bajadas</button>
+            <span class="chip spacer">Concepto ▾</span>
+          </div>
+          <div class="tblwrap">
+            <table style="min-width:760px;">
+              <thead><tr><th>Fecha</th><th>Concepto</th><th class="r">Importe</th><th class="r">vs anterior</th><th class="r">vs original</th><th>Nota</th></tr></thead>
+              <tbody>
+                <tr><td style="font-family:var(--mono);font-size:11px;">09/08/2026</td><td>Luz</td><td class="r" style="font-family:var(--mono);">48,00 €</td><td class="r"><span class="delta up">+6,00 €</span></td><td class="r"><span class="delta up">+14 %</span></td><td style="color:var(--muted);">subida de la tarifa regulada</td></tr>
+                <tr><td style="font-family:var(--mono);font-size:11px;">28/07/2026</td><td>Colchón</td><td class="r" style="font-family:var(--mono);">180,00 €</td><td class="r"><span class="delta down">−40,00 €</span></td><td class="r"><span class="delta down">−18 %</span></td><td style="color:var(--muted);">encontrado en oferta</td></tr>
+                <tr><td style="font-family:var(--mono);font-size:11px;">21/07/2026</td><td>Alquiler</td><td class="r" style="font-family:var(--mono);">330,00 €</td><td class="r"><span class="delta up">+15,00 €</span></td><td class="r"><span class="delta up">+4,8 %</span></td><td style="color:var(--muted);">Ana y yo repartimos distinto</td></tr>
+                <tr><td style="font-family:var(--mono);font-size:11px;">14/07/2026</td><td>Compra semanal</td><td class="r" style="font-family:var(--mono);">130,00 €</td><td class="r"><span class="delta up">+10,00 €</span></td><td class="r"><span class="delta up">+8,3 %</span></td><td style="color:var(--muted);">120 € se me quedaba corto</td></tr>
+                <tr><td style="font-family:var(--mono);font-size:11px;">03/07/2026</td><td>Luz</td><td class="r" style="font-family:var(--mono);">42,00 €</td><td class="r" style="color:var(--faint);font-family:var(--mono);font-size:10px;">sin cambio</td><td class="r" style="color:var(--faint);font-family:var(--mono);font-size:10px;">—</td><td style="color:var(--muted);">confirmado con la factura de junio</td></tr>
+                <tr><td style="font-family:var(--mono);font-size:11px;">12/05/2026</td><td>Seguro de hogar</td><td class="r" style="font-family:var(--mono);">96,00 €</td><td class="r" style="color:var(--faint);font-family:var(--mono);font-size:10px;">inicial</td><td class="r" style="color:var(--faint);font-family:var(--mono);font-size:10px;">—</td><td style="color:var(--muted);">estimación de tres presupuestos</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Historial</span><span>Append-only · a revision pushes, never mutates (IND002)</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════ COMPARAR -->
+<section class="plate" id="comparar">
+  <div class="plate-head">
+    <div class="eyebrow">Proposal · brief §9.3</div>
+    <h2>Comparar — the screen the brief didn't specify</h2>
+    <p>The app exists to choose between real options, so comparison is not an overlay on Resumen. It is a column per scenario over a shared row set, with one rule that makes it usable: <strong>rows where every scenario agrees collapse into a single muted line.</strong> Only the differences stay open. Comparing three flats then fits on one screen instead of scrolling past forty identical conceptos.</p>
+  </div>
+
+  <div class="frame">
+    <div class="app">
+      <div class="body">
+        <div class="panel">
+          <div class="ph">
+            <div class="ph-l"><span class="dot"></span>Comparar escenarios · 3</div>
+            <div class="ph-r"><button class="btn on-ink">Sólo diferencias · activo</button><button class="btn on-ink">+ Añadir escenario</button></div>
+          </div>
+          <div class="tblwrap">
+            <table class="cmp">
+              <thead>
+                <tr>
+                  <th style="width:210px;">&nbsp;</th>
+                  <th class="win">Compartir con Ana<br><span style="font-weight:400;letter-spacing:.06em;">330 €</span></th>
+                  <th>Compartir Chamberí<br><span style="font-weight:400;letter-spacing:.06em;">430 €</span></th>
+                  <th>Estudio Vallecas<br><span style="font-weight:400;letter-spacing:.06em;">720 €</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Veredicto</td>
+                  <td><span class="tag g">✓ Te lo puedes permitir</span></td>
+                  <td><span class="tag a">⚠ Justo</span></td>
+                  <td><span class="tag r">✗ Faltan 340 €</span></td>
+                </tr>
+                <tr><td>Balance / mes</td><td class="best" style="color:var(--green);">+88,00 €</td><td style="color:var(--green);">+18,00 €</td><td style="color:var(--red);">−340,00 €</td></tr>
+                <tr><td>Salidas / mes</td><td class="best">642,00 €</td><td>712,00 €</td><td>1.070,00 €</td></tr>
+                <tr><td>Vivienda</td><td class="best">355,00 €</td><td>455,00 €</td><td>745,00 €</td></tr>
+                <tr><td>Suministros</td><td class="best">99,00 €</td><td>67,00 €</td><td>108,00 €</td></tr>
+                <tr><td>Dinero al entrar</td><td class="best">1.695,00 €</td><td>1.970,00 €</td><td>3.190,00 €</td></tr>
+                <tr><td>Gasto real</td><td class="best">1.365,00 €</td><td>1.540,00 €</td><td>2.470,00 €</td></tr>
+                <tr><td>Ahorro que queda</td><td class="best">4.705,00 €</td><td>4.430,00 €</td><td>3.210,00 €</td></tr>
+                <tr><td>Margen / colchón</td><td class="best">Colchón cubierto</td><td>+18 €/mes</td><td style="color:var(--red);">9,4 meses</td></tr>
+                <tr class="same"><td colspan="4">12 conceptos idénticos en los tres — consumibles, transporte, alimentación, higiene… &nbsp;&nbsp;<span style="font-style:normal;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--accent);text-transform:uppercase;">Mostrar</span></td></tr>
+                <tr><td>Conceptos sin importe</td><td class="best">3</td><td>5</td><td>6</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pb" style="border-top:1px solid var(--border);">
+            <div class="insight">Compartir con Ana es la única opción que deja colchón. Chamberí sale por <b>70 €/mes más</b> y se queda sin margen; el estudio no sale de ninguna forma con 730 €/mes de entrada. Si el alquiler de Chamberí bajara a <b>380 €</b>, empataría con Ana.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-cap"><span>Comparar · proposal</span><span>Best cell per row gets an accent underline — the accent marks "look here", not "good"</span></div>
+</section>
+
+<!-- ══════════════════════════════════════════ MOVIL -->
+<section class="plate" id="movil">
+  <div class="plate-head">
+    <div class="eyebrow">The biggest unknown · brief §9.1</div>
+    <h2>Mobile — the nine-column grid becomes a card list</h2>
+    <p>Horizontal scroll with a frozen <em>concepto</em> column was the obvious answer and it is the wrong one: on a phone the user is standing in a flat they are viewing, checking one number. They do not need nine columns, they need to find one row and change it.</p>
+  </div>
+
+  <div class="phones">
+    <div class="phone">
+      <div class="glass">
+        <div class="app narrow">
+          <div class="hdr" style="padding:9px 12px;">
+            <div class="hdr-id"><b style="font-size:14px;">INDEPENDENCE</b></div>
+            <select class="sel-dark acc" style="font-size:10px;max-width:130px;"><option>Compartir con Ana</option></select>
+          </div>
+          <div class="body" style="padding:10px;display:grid;gap:10px;">
+            <div class="panel">
+              <div class="ph"><div class="ph-l"><span class="dot g"></span>Veredicto</div></div>
+              <div class="pb" style="display:grid;gap:9px;justify-items:start;">
+                <span class="tag g big">✓ Te lo puedes permitir</span>
+              </div>
+              <div class="kgrid" style="grid-template-columns:1fr 1fr;">
+                <div class="kpi hero" style="grid-column:1/-1;"><div class="lbl">Balance</div><div class="val pos">+88<small>,00 €</small></div><div class="sub">730 € entran · 642 € salen</div></div>
+                <div class="kpi"><div class="lbl">Al entrar</div><div class="val" style="font-size:21px;">1.695<small>,00</small></div><div class="sub">fianza incluida</div></div>
+                <div class="kpi"><div class="lbl">Gasto real</div><div class="val" style="font-size:21px;">1.365<small>,00</small></div><div class="sub">sin la fianza</div></div>
+              </div>
+              <div class="guide"><b>Alquiler máx. orient. 234 €</b></div>
+            </div>
+            <div class="panel">
+              <div class="ph"><div class="ph-l"><span class="dot"></span>En una frase</div></div>
+              <div class="pb"><div class="insight" style="font-size:12px;">Con este piso te sobran <b>88 € al mes</b>. El colchón ya está cubierto. El punto flojo es el fondo de electrodomésticos.</div></div>
+            </div>
+          </div>
+          <div class="mnav">
+            <button class="on"><i></i>Resumen</button><button><i></i>Costes</button><button><i></i>Muebles</button><button><i></i>Proyec.</button><button><i></i>Hist.</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap">Resumen · the KPI grid drops to 2 columns, balance spans both</div>
+    </div>
+
+    <div class="phone">
+      <div class="glass">
+        <div class="app narrow">
+          <div class="hdr" style="padding:9px 12px;">
+            <div class="hdr-id"><b style="font-size:14px;">COSTES</b><em style="font-size:8px;">11 / 14</em></div>
+            <button class="btn on-ink">Filtros</button>
+          </div>
+          <div class="mbar">
+            <button class="chip on">Todo</button><button class="chip">Salidas</button><button class="chip">Entradas</button><button class="chip">Esencial</button><button class="chip">Sin importe</button>
+          </div>
+          <div>
+            <div class="mcard s-activo">
+              <div class="m1"><b>Alquiler</b><span>330,00 €</span></div>
+              <div class="m2"><span>Vivienda · Mensual</span><span>= 330,00 €/mes</span></div>
+            </div>
+            <div class="mcard s-activo">
+              <div class="m1"><b>Agua</b><span>58,00 €</span></div>
+              <div class="m2"><span>Suministros · Bimestral</span><span><span style="color:var(--faint);">÷2</span> = 29,00 €/mes</span></div>
+            </div>
+            <div class="mcard s-activo" style="background:var(--raised);box-shadow:inset 0 0 0 1px var(--accent);">
+              <div class="m1"><b>Luz</b><span>48,00</span></div>
+              <div class="m2"><span>Suministros · Mensual</span><span>= 48,00 €/mes <span class="delta up">▲ 14 %</span></span></div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap;padding-top:6px;border-top:1px solid var(--border);">
+                <select class="ie st-activo" style="width:auto;font-size:10px;"><option>Activo</option></select>
+                <select class="ie" style="width:auto;font-size:10px;"><option>Mensual</option></select>
+                <select class="ie" style="width:auto;font-size:10px;"><option>Esencial</option></select>
+                <button class="btn sm">Historial · 3</button>
+              </div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--muted);">media anual · enero ~75 €</div>
+            </div>
+            <div class="mcard s-pendiente">
+              <div class="m1"><b>Tasa de basuras</b><span class="empty">— —</span></div>
+              <div class="m2"><span>Impuestos · Anual</span><span>sin importe</span></div>
+            </div>
+            <div class="mcard s-pausado">
+              <div class="m1" style="opacity:.55;"><b>Gimnasio</b><span>29,00 €</span></div>
+              <div class="m2" style="opacity:.55;"><span>Ocio · Mensual</span><span>no cuenta</span></div>
+            </div>
+            <div class="mcard" style="background:var(--sunk);">
+              <div class="m1"><b style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);">Balance</b><span style="color:var(--green);font-weight:700;">+88,00 €/mes</span></div>
+            </div>
+            <div style="padding:10px;"><button class="btn add">+ Añadir concepto</button></div>
+          </div>
+          <div class="mnav">
+            <button><i></i>Resumen</button><button class="on"><i></i>Costes</button><button><i></i>Muebles</button><button><i></i>Proyec.</button><button><i></i>Hist.</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap">Costes · card per row, third card tapped open</div>
+    </div>
+  </div>
+
+  <div class="cols-2" style="margin-top:34px;">
+    <p class="note"><b>Two lines per card, and only two.</b> Line one is what you look for and what it costs. Line two is category, real frequency and the monthly equivalent — the same <code>÷2</code> annotation as desktop. Everything else (dirección, prioridad, estado, nota, historial) appears only when the card is tapped open, in place, pushing the list down. No modal, no separate edit screen, no lost scroll position.</p>
+    <p class="note"><b>Status moves from a select to a 3&nbsp;px left edge.</b> On desktop a coloured select is scannable; on a phone it costs a whole column. The edge stripe reads at arm's length, and the select itself reappears inside the opened card where there is room for it. Same information, different carrier.</p>
+    <p class="note"><b>The totals row becomes a sticky footer card</b> in <code>--sunk</code>, directly above the add-row. It never scrolls out of reach, because on a phone the whole reason for editing a number is to watch that one figure move.</p>
+    <p class="note"><b>Breakpoint is 820&nbsp;px, and it is a real fork.</b> Desktop keeps the dense table at 12&nbsp;px; mobile renders a different component from the same <code>Entry[]</code>. Trying to make one table responsive into both is where this design would go wrong — the grid and the card list are two views of one calculation layer, and <code>src/lib/</code> does not know which one is mounted.</p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ DECISIONES -->
+<section class="plate" id="decisiones">
+  <div class="plate-head">
+    <div class="eyebrow">Decisions</div>
+    <h2>Where a domain rule became a visual rule</h2>
+    <p>Each trap in <code>docs/DESIGN-BRIEF.md §4</code> has a specific consequence in the layout above. Listing them together so a future change can be checked against them.</p>
+  </div>
+
+  <div class="qa">
+    <div class="verdict-line">Fianza is refundable</div>
+    <div class="q">Two figures, never one</div>
+    <div class="a"><b>Dinero al entrar</b> and <b>gasto real</b> are separate KPIs and separate ledger totals, with the fianza row carrying a green <em>Devolvible</em> pill. The margin calculation subtracts <code>upfrontCash</code> from savings but never counts the fianza as burned. There is no combined "moving costs" number anywhere in the design, in any tab.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">Runway only means something when the balance is negative</div>
+    <div class="q">The sixth KPI changes identity with the sign</div>
+    <div class="a">Negative → <b>meses de margen</b>. Positive → <b>colchón</b>, showing the target, whether it is covered, and what is left. Marginal → the same slot quantifies fragility instead (<em>"un imprevisto de 200 € se come once meses"</em>). <b>"∞ meses" can never render</b>, because that branch does not exist.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">Max affordable rent is a rule of thumb</div>
+    <div class="q">A guideline strip, not a validation error</div>
+    <div class="a">It sits in amber <em>below</em> the KPI row, states its own assumption inline (<em>32 % sobre 730 €/mes</em>), and never touches an input or blocks a save. In the mockup all three scenarios exceed it and two of them still work — which is exactly the point, and the copy says so.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">Agency fees are the landlord's by law</div>
+    <div class="q">Present, at zero, flagged red</div>
+    <div class="a">The row exists in the upfront ledger with <code>0,00 €</code> struck through and a red <em>No deberías pagarlo</em> pill. Omitting it entirely would leave the user to be surprised by a listing that charges one; budgeting it silently would legitimise it. Showing it at zero teaches the rule.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">Electricity is seasonal · promos expire · rent rises</div>
+    <div class="q">The nota column is load-bearing, so it is wide and always visible</div>
+    <div class="a">Not a tooltip, not an icon, not truncated to an ellipsis: a full editable column carrying <em>"media anual · enero ~75 €"</em> and <em>"promo 12 m · jun-27 sube a 39 €"</em>. These are the notes that stop a plausible-looking budget being quietly wrong, and hiding them behind a hover defeats them on a phone entirely.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">The empty state is the normal state</div>
+    <div class="q">Coverage is displayed next to every total</div>
+    <div class="a">Blank amounts render as a dashed <code>— —</code> rather than <code>0,00 €</code> — a zero is a claim, a dash is an admission. Panel headers count <em>11 / 14 con importe</em>; the Salidas KPI repeats it; Muebles gets a whole KPI for <em>sin precio</em>, because the "mínimo para entrar" figure is only as true as its coverage.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">No rate or price is hardcoded</div>
+    <div class="q">Every number in these mockups is user data</div>
+    <div class="a">Taxes and local charges are ordinary rows with an editable amount and a nota. The only constant in the whole design is the <b>32 %</b> guideline percentage, and that lives in <em>Ajustes</em> as an editable field with its assumption printed beside it.</div>
+  </div>
+  <div class="qa">
+    <div class="verdict-line">Income is lumpy and nothing is fixed</div>
+    <div class="q">The income side is designed to look uncertain</div>
+    <div class="a">Entradas is not a single confident figure: the KPI sub-line reads <em>"beca · familia · trabajo — ninguno es fijo"</em>, and the rows carry their own caveats (<em>"hasta jun-27, sin renovación segura"</em>, <em>"media de 6 meses · no es fijo"</em>). A design that renders 730&nbsp;€ as solidly as a salary would be lying about the thing that matters most here.</div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════ ORDEN -->
+<section class="plate" id="orden">
+  <div class="plate-head">
+    <div class="eyebrow">Build order</div>
+    <h2>What to write, in order</h2>
+    <p>This is a real sequence: each step is only safe once the one above it exists. CLAUDE.md already names the first two — this expands the rest and maps each to the screens above.</p>
+  </div>
+
+  <ol class="build">
+    <li><div><b>Scaffold and the token block</b><code>vite + src/styles/tokens.css + tailwind.config.ts</code><span>The nine lines of palette, the three font stacks, Tailwind wired to consume variables. Nothing else can be styled correctly before this, and a raw hex added now is a hex someone has to hunt down later.</span></div></li>
+    <li><div><b>The model</b><code>src/types.ts</code><span>Entry, Scenario, PurchaseProject, Buffer, and the enums behind every select in the mockups. Single source of truth (CLAUDE.md § Domain model).</span></div></li>
+    <li><div><b>The calculation layer</b><code>src/lib/money.ts · frequency.ts · derive.ts</code><span>Integer cents (IND001), <code>toMonthly()</code> (IND004), sign from <code>direction</code> (IND005), and every figure in the KPI row. Pure functions, no React. This is what Vitest covers and it can be finished before a single component exists.</span></div></li>
+    <li><div><b>Storage</b><code>src/lib/storage.ts</code><span>The only module touching localStorage (IND006). Schema <code>version</code>, <code>DEFAULTS()</code> and <code>ensureShape()</code> together (IND003), JSON export/import through the same door.</span></div></li>
+    <li><div><b>The string table</b><code>src/i18n/es.ts</code><span>Every Spanish label visible in the mockups above, in one file (IND008). Writing it now means components are built against keys from the start instead of being swept later.</span></div></li>
+    <li><div><b>Component sheet</b><code>src/components/</code><span>Panel, KpiCard, Tag, Button, EditableCell, StatusSelect, BreakdownBar, AddRow. Build them against the sheet above, not against a screen — every tab is assembled from these ten and reaches for nothing else.</span></div></li>
+    <li><div><b>Costes</b><code>src/tabs/Costes.tsx</code><span>Before Resumen, deliberately: Resumen has nothing to summarise until data can be entered, and the editable grid is where the state model gets stress-tested.</span></div></li>
+    <li><div><b>Resumen</b><code>src/tabs/Resumen.tsx</code><span>All three verdict states and the sign-dependent sixth KPI. Every figure read from <code>src/lib/</code>, never computed inline (IND007).</span></div></li>
+    <li><div><b>Muebles, Proyectos, Historial, Ajustes</b><code>src/tabs/</code><span>In that order. Historial needs the append-only history already accumulating from step 7, so it is genuinely later, not just lower priority.</span></div></li>
+    <li><div><b>Mobile fork and PWA</b><code>src/tabs/CostesMobile.tsx · vite-plugin-pwa</code><span>The card list at &lt;820&nbsp;px reading the same <code>Entry[]</code>. Install manifest, offline shell, and the export/import round-trip tested on the phone — it is the only backup story.</span></div></li>
+    <li><div><b>Comparar</b><code>src/tabs/Comparar.tsx</code><span>Last, because it needs two real scenarios to be worth anything — and it is the feature the app exists for, so it should be built against real data rather than fixtures.</span></div></li>
+  </ol>
+
+  <p class="note" style="margin-top:30px;"><b>Two things to decide before step 1.</b> First, the accent: mulberry is a proposal, and it is nine lines to change — but changing it after step 6 means re-checking every semantic pairing, and on a warm ground those clearances are tighter than they look. Second, the fonts: the production faces need installing as local packages rather than CDN links, because the app has to work offline on the first launch after install.</p>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var D = {
+    a:{
+      scenario:'Compartir con Ana · 330 €', dot:'dot g',
+      verdict:'✓ Te lo puedes permitir', vclass:'tag g big',
+      vsub:'Con los importes de hoy y sin contar la fianza como gasto.',
+      since:'Escenario creado el 12/05/2026 · desviación <span style="color:var(--amber-f);">+18 €/mes</span>',
+      out:'642<small>,00 €</small>', outSub:'sobre 11 de 14 conceptos<br>con importe',
+      bal:'+88<small>,00 €</small>', balClass:'val pos', balSub:'12 % de las entradas',
+      upfront:'1.695<small>,00 €</small>', spend:'1.365<small>,00 €</small>',
+      spendSub:'sin la fianza, que vuelve',
+      runLbl:'Colchón', run:'Cubierto', runClass:'val',
+      runSub:'objetivo 1.900 € · te quedan<br>4.705 € tras entrar',
+      barsTotal:'642,00 €/mes',
+      bars:[['Vivienda',55,'355,00 €'],['Alimentación',20,'130,00 €'],['Suministros',15,'99,00 €'],
+            ['Consumibles',4,'25,00 €'],['Transporte',3,'20,00 €'],['Impuestos',1.5,'8,00 €'],
+            ['Colchón y fondos',1,'5,00 €']],
+      ledger:[['Fianza',true,'330,00 €'],['Mes anticipado',false,'330,00 €'],['Muebles esenciales',false,'620,00 €'],
+              ['Altas de luz, agua e internet',false,'145,00 €'],['Mudanza',false,'90,00 €'],['Primera compra grande',false,'180,00 €']],
+      lUp:'1.695,00 €', lSp:'1.365,00 €',
+      insight:'Con este piso te sobran <b>88 € al mes</b>. El colchón de 1.900 € ya está cubierto por el ahorro que queda después de entrar. El punto flojo es otro: <b>5 €/mes al fondo de electrodomésticos no repone una lavadora</b> — a ese ritmo tardas nueve años en tener una de repuesto.'
+    },
+    b:{
+      scenario:'Compartir Chamberí · 430 €', dot:'dot a',
+      verdict:'⚠ Justo', vclass:'tag a big',
+      vsub:'Sale, pero sin nada detrás. Un imprevisto lo tumba.',
+      since:'Escenario creado el 02/06/2026 · desviación <span style="color:var(--amber-f);">+31 €/mes</span>',
+      out:'712<small>,00 €</small>', outSub:'sobre 9 de 14 conceptos<br>con importe',
+      bal:'+18<small>,00 €</small>', balClass:'val warn', balSub:'2,5 % de las entradas',
+      upfront:'1.970<small>,00 €</small>', spend:'1.540<small>,00 €</small>',
+      spendSub:'sin la fianza, que vuelve',
+      runLbl:'Margen', run:'+18<small>,00 €/mes</small>', runClass:'val warn',
+      runSub:'un imprevisto de 200 € se come<br>once meses de margen',
+      barsTotal:'712,00 €/mes',
+      bars:[['Vivienda',64,'455,00 €'],['Alimentación',19,'135,00 €'],['Suministros',9.4,'67,00 €'],
+            ['Consumibles',3.8,'27,00 €'],['Transporte',2.8,'20,00 €'],['Impuestos',1.1,'8,00 €'],
+            ['Colchón y fondos',0,'0,00 €']],
+      ledger:[['Fianza',true,'430,00 €'],['Mes anticipado',false,'430,00 €'],['Muebles esenciales',false,'680,00 €'],
+              ['Altas de luz, agua e internet',false,'160,00 €'],['Mudanza',false,'90,00 €'],['Primera compra grande',false,'180,00 €']],
+      lUp:'1.970,00 €', lSp:'1.540,00 €',
+      insight:'Con este piso te quedan <b>18 € al mes</b>. No es un no, pero no hay colchón detrás: <b>un imprevisto de 200 € se come once meses de margen</b>. Bajar el alquiler a 380 € o sumar cuatro horas de trabajo a la semana lo vuelve holgado.'
+    },
+    c:{
+      scenario:'Estudio Vallecas · 720 €', dot:'dot r',
+      verdict:'✗ Te faltan 340 €/mes', vclass:'tag r big',
+      vsub:'Vivir solo con estos ingresos no sale en Madrid.',
+      since:'Escenario creado el 18/06/2026 · desviación <span style="color:var(--red-f);">+42 €/mes</span>',
+      out:'1.070<small>,00 €</small>', outSub:'sobre 8 de 14 conceptos<br>con importe',
+      bal:'−340<small>,00 €</small>', balClass:'val neg', balSub:'47 % por encima de lo que entra',
+      upfront:'3.190<small>,00 €</small>', spend:'2.470<small>,00 €</small>',
+      spendSub:'sin la fianza, que vuelve',
+      runLbl:'Meses de margen', run:'9,4', runClass:'val neg',
+      runSub:'3.210 € de ahorro tras entrar<br>÷ 340 €/mes de déficit',
+      barsTotal:'1.070,00 €/mes',
+      bars:[['Vivienda',70,'745,00 €'],['Alimentación',14,'150,00 €'],['Suministros',10,'108,00 €'],
+            ['Consumibles',2.8,'30,00 €'],['Transporte',1.9,'20,00 €'],['Impuestos',1.1,'12,00 €'],
+            ['Colchón y fondos',0.5,'5,00 €']],
+      ledger:[['Fianza',true,'720,00 €'],['Mes anticipado',false,'720,00 €'],['Muebles esenciales',false,'1.240,00 €'],
+              ['Altas de luz, agua e internet',false,'210,00 €'],['Mudanza',false,'120,00 €'],['Primera compra grande',false,'180,00 €']],
+      lUp:'3.190,00 €', lSp:'2.470,00 €',
+      insight:'Con este estudio te faltan <b>340 € al mes</b>. El ahorro aguanta <b>nueve meses</b> y después no queda nada. Vivir solo con 730 €/mes de entrada no sale en Madrid — compartir a 380 € sí.'
+    }
+  };
+
+  function el(id){ return document.getElementById(id); }
+
+  function render(k){
+    var d = D[k];
+    el('r-scenario').textContent = d.scenario;
+    el('r-dot').className = d.dot;
+    el('r-since').innerHTML = d.since;
+    var v = el('r-verdict'); v.className = d.vclass; v.textContent = d.verdict;
+    el('r-verdict-sub').textContent = d.vsub;
+    el('r-out').innerHTML = d.out;
+    el('r-out-sub').innerHTML = d.outSub;
+    var b = el('r-balance'); b.className = d.balClass; b.innerHTML = d.bal;
+    el('r-balance-sub').textContent = d.balSub;
+    el('r-upfront').innerHTML = d.upfront;
+    el('r-spend').innerHTML = d.spend;
+    el('r-spend-sub').textContent = d.spendSub;
+    el('r-runway-lbl').textContent = d.runLbl;
+    var r = el('r-runway'); r.className = d.runClass; r.innerHTML = d.run;
+    el('r-runway-sub').innerHTML = d.runSub;
+    el('r-bars-total').textContent = d.barsTotal;
+
+    var maxPct = d.bars[0][1];
+    el('r-bars').innerHTML = d.bars.map(function(row, i){
+      var w = row[1], op = Math.max(0.34, 1 - i * 0.11);
+      var lab = w >= 12 ? Math.round(w) + ' %' : '';
+      return '<div class="bar"><span class="bl">' + row[0] + '</span>' +
+             '<span class="bt"><span class="bf" style="width:' + (w / maxPct * 100 * 0.92).toFixed(1) +
+             '%;background:var(--ink-3);opacity:' + op.toFixed(2) + ';">' + lab + '</span></span>' +
+             '<span class="ba">' + row[2] + '</span></div>';
+    }).join('') +
+      '<div class="bar"><span class="bl" style="color:var(--faint);">Ocio</span><span class="bt"></span>' +
+      '<span class="ba" style="color:var(--faint);">pausado</span></div>';
+
+    el('r-ledger').innerHTML = d.ledger.map(function(row){
+      return '<div class="lrow"><span class="ll">' + row[0] +
+        (row[1] ? ' <span class="tag g" style="margin-left:5px;">Devolvible</span>' : '') +
+        '</span><span class="lv">' + row[2] + '</span></div>';
+    }).join('') +
+      '<div class="lrow flagged"><span class="ll">Honorarios de agencia <span class="tag r" style="margin-left:5px;">No deberías pagarlo</span></span><span class="lv">0,00 €</span></div>' +
+      '<div class="lrow sum"><span class="ll">Dinero al entrar</span><span class="lv">' + d.lUp + '</span></div>' +
+      '<div class="lrow sum" style="border-top:none;margin-top:0;padding-top:2px;"><span class="ll">Gasto real</span><span class="lv">' + d.lSp + '</span></div>';
+
+    el('r-insight').innerHTML = d.insight;
+  }
+
+  var btns = document.querySelectorAll('.states button');
+  Array.prototype.forEach.call(btns, function(btn){
+    btn.addEventListener('click', function(){
+      Array.prototype.forEach.call(btns, function(o){ o.setAttribute('aria-pressed','false'); });
+      btn.setAttribute('aria-pressed','true');
+      render(btn.getAttribute('data-state'));
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

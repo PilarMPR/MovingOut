@@ -1,0 +1,72 @@
+/* ============================================================
+   Independence — design tokens.
+
+   THE ONLY PLACE A COLOUR IS DEFINED. No raw hex exists anywhere
+   else in src/ (checked by .claude/tools/check.py). Swapping the
+   palette is nine lines here, not a sweep across components.
+
+   Block 1 is DESIGN-SYSTEM.md §2, verbatim.
+   Block 2 is the handful of values the prototype wrote inline —
+   text on ink, text on accent, bar-fill text — lifted into tokens
+   so the rule above holds without exception.
+   ============================================================ */
+:root{
+  /* ── ground — warm plaster, the wall of the flat, not a sheet of paper ── */
+  --bg:#EBE4D9;      --card:#F8F4EC;   --sunk:#DFD6C6;   --raised:#FFFDF8;
+  --ink:#1E1813;     --ink-2:#2A231C;  --ink-3:#3A3128;
+  --text:#1F1913;    --muted:#6E6357;  --faint:#A79B8B;
+  --border:rgba(31,25,19,.15);   --border-ink:rgba(248,244,236,.10);
+
+  /* ── accent — interaction, never meaning ── */
+  --accent:#7B3A87;  --accent-l:#C88ED6; --accent-t:#F2E6F4;
+
+  /* ── semantic — meaning, never decoration ── */
+  --green:#3D6B33;   --green-t:#E6EDDA;  --green-f:#6B9243;
+  --red:#B23A25;     --red-t:#F7E4DC;    --red-f:#CE5A3E;
+  --amber:#8A6212;   --amber-t:#F6E8CB;  --amber-f:#C9901A;
+  --stone:#6E6357;   --stone-t:#E7DFD1;
+
+  /* ── form ── */
+  --r-sm:4px; --r:8px; --r-lg:12px;
+  --mnav-h:36px;   /* height of the mobile bottom nav; the totals card clears it */
+  --sh-1:0 1px 2px rgba(28,22,17,.08);
+  --sh-2:0 4px 14px rgba(28,22,17,.12);
+  --sh-3:0 22px 55px rgba(28,22,17,.30);
+
+  /* ── type ──
+     'Archivo Variable' is the family name @fontsource-variable/archivo
+     registers; Expanded is its wdth axis at 125% (see .u-display). */
+  --display:'Archivo Variable','Archivo Expanded','Archivo',ui-sans-serif,system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+
+  /* ── text ON a filled ground ──
+     One ramp of the same warm off-white, by opacity. Never a new hue. */
+  --on-ink:#F7F1E5;
+  --on-ink-72:rgba(245,238,227,.72);   /* on-ink button label              */
+  --on-ink-55:rgba(245,238,227,.55);   /* panel micro-label                */
+  --on-ink-42:rgba(245,238,227,.42);   /* header sub-label                 */
+  --on-ink-36:rgba(245,238,227,.36);   /* idle tab                         */
+  --on-ink-22:rgba(245,238,227,.22);   /* hairline border on ink           */
+  --on-ink-16:rgba(245,238,227,.16);   /* dark select border               */
+  --on-accent:#FBF3FC;                 /* label inside the primary button  */
+  --on-fill:#F8F4EC;                   /* percentage inside a breakdown bar*/
+
+  /* ── ink washes — the ground showing through, not a colour ── */
+  --hover:rgba(123,58,135,.035);       /* table row hover                  */
+  --rule:rgba(31,25,19,.07);           /* lightest hairline, table rows    */
+  --track:rgba(31,25,19,.07);          /* breakdown bar track              */
+  --track-2:rgba(31,25,19,.09);        /* progress bar track               */
+  --wash:rgba(31,25,19,.05);           /* neutral pill fill                */
+  --wash-2:rgba(31,25,19,.03);         /* collapsed comparison row         */
+  --dash:rgba(31,25,19,.18);           /* dashed empty-cell border         */
+
+  /* ── semantic borders — each colour against its own tint ── */
+  --green-b:rgba(61,107,51,.24);
+  --red-b:rgba(178,58,37,.24);
+  --amber-b:rgba(138,98,18,.28);
+  --amber-b-soft:rgba(138,98,18,.18);
+  --amber-soft:rgba(138,98,18,.72);
+  --stone-b:rgba(110,99,87,.30);
+  --accent-b:rgba(123,58,135,.22);
+}
