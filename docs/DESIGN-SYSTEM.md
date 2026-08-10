@@ -1,4 +1,4 @@
-# Design system — Independence
+# Design system — MovingOut
 
 The resolved answer to [`DESIGN-BRIEF.md`](DESIGN-BRIEF.md). The brief asked the questions; this file holds the decisions, and the build is expected to match it.
 
@@ -6,7 +6,7 @@ The resolved answer to [`DESIGN-BRIEF.md`](DESIGN-BRIEF.md). The brief asked the
 >
 > Three things the build changed, all recorded in `docs/DEVLOG.md`: the token block gained a derived group (text on ink, ink washes, semantic borders) so *no* raw hex lives outside `:root`; the display face is `'Archivo Variable'` with `font-stretch:125%`, which is how `@fontsource-variable/archivo` exposes Expanded; and the marginal-state fragility line is phrased per 100 € of surprise rather than against an invented shock figure, so no real-world price is hardcoded.
 
-A working prototype of everything below lives at [`mockups/independence.html`](mockups/independence.html) — a single self-contained file, no build step, open it in a browser. It renders every screen, the component sheet and all three verdict states. **When this file and the prototype disagree, this file wins**; the prototype is a picture, not a source of truth.
+A working prototype of everything below lives at [`mockups/movingout.html`](mockups/movingout.html) — a single self-contained file, no build step, open it in a browser. It renders every screen, the component sheet and all three verdict states. **When this file and the prototype disagree, this file wins**; the prototype is a picture, not a source of truth.
 
 ---
 

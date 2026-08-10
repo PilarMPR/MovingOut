@@ -18,7 +18,7 @@ export function Ajustes({ store }: { store: Store }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `independence-${scenario.createdAt}.json`;
+    link.download = `movingout-${scenario.createdAt}.json`;
     link.click();
     URL.revokeObjectURL(url);
   };

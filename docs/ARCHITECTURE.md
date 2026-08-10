@@ -109,7 +109,7 @@ Every colour resolves through a custom property in `src/styles/tokens.css`. Tail
 
 The stylesheet order in `src/main.tsx` is deliberate: fonts, tokens, Tailwind's layers, then `app.css`. A bare CSS `@import` inside a stylesheet is hoisted to the top of the file, which would land the component sheet *underneath* Preflight instead of on top of it.
 
-`app.css` is the component sheet from `docs/mockups/independence.html`, de-scoped from `.app` and with every literal colour routed through a token. Colour has exactly two jobs and they never overlap: semantic carries meaning, accent carries interaction. If a number renders in the accent, that is a bug.
+`app.css` is the component sheet from `docs/mockups/movingout.html`, de-scoped from `.app` and with every literal colour routed through a token. Colour has exactly two jobs and they never overlap: semantic carries meaning, accent carries interaction. If a number renders in the accent, that is a bug.
 
 **Mobile is a real component fork at 820 px**, not a responsive table. `App.tsx` watches a `matchMedia` query and mounts `CostesMobile` instead of `Costes`. Both read the same `Entry[]`, and `src/lib/` does not know which one is mounted.
 

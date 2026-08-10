@@ -10,6 +10,10 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 The whole build order from `DESIGN-SYSTEM.md` §8, steps 1–11.
 
+### Renamed
+- **The project is now MovingOut**, matching the GitHub repo. The product name changed everywhere it is a name — package name, page title, PWA manifest, app header, export filename, doc headings, and `mockups/independence.html` → `mockups/movingout.html`. The ordinary word *independence* stays in the prose that describes what the app models.
+- **The `localStorage` key changed with it**, `independence.state` → `movingout.state`. Free to do now and never again: nothing is deployed, so no saved data is orphaned. After the first install this becomes a migration.
+
 ### Added
 - **Scaffold.** Vite + React 19 + TypeScript + Tailwind, `vite-plugin-pwa`, Vitest. Fonts are local `@fontsource` packages, never CDN links, so the first launch after install works offline.
 - **`src/styles/tokens.css`.** The §2 block verbatim, plus a small derived group (text on ink, ink washes, semantic borders) so the "no raw hex outside `:root`" rule holds with no exceptions. Tailwind consumes the variables and owns no colour.
@@ -40,7 +44,7 @@ The whole build order from `DESIGN-SYSTEM.md` §8, steps 1–11.
 - Project documentation: `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/COST-CHECKLIST.md`, `docs/DEVLOG.md`.
 - Invariant checker `.claude/tools/check.py` with PostToolUse / PreToolUse / Stop hooks. Inert until `src/` exists.
 - `docs/DESIGN-SYSTEM.md` — the resolved design: token block, component sheet, all six tabs plus **Comparar**, the mobile fork, and the build order.
-- `docs/mockups/independence.html` — self-contained working prototype of the above. No build step.
+- `docs/mockups/movingout.html` — self-contained working prototype of the above. No build step.
 
 ### Decided
 - **Palette chosen.** Warm plaster ground, warm near-black ink, mulberry accent, earth semantics, light mode only. Nine lines in `:root`; nothing else in the app owns a colour.

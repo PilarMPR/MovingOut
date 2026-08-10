@@ -14,8 +14,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Independence',
-        short_name: 'Independence',
+        name: 'MovingOut',
+        short_name: 'MovingOut',
         description: 'Calculadora de independencia — Madrid, EUR',
         lang: 'es-ES',
         start_url: base,

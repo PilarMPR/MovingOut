@@ -1,4 +1,4 @@
-# Independence
+# MovingOut
 
 A personal budget calculator for moving out — what independence actually costs, and whether it's affordable yet.
 
@@ -19,7 +19,7 @@ npm run test      # Vitest, src/lib only
 Requires Node 20+. There is no backend and no account: data lives in `localStorage`, and JSON export/import in **Ajustes** is the backup and device-transfer story. The build output is entirely static, so any static host will do — set `BASE_PATH` if it is served from a subdirectory:
 
 ```bash
-BASE_PATH=/independence/ npm run build
+BASE_PATH=/MovingOut/ npm run build
 ```
 
 ## What is where

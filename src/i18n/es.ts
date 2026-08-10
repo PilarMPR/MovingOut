@@ -26,7 +26,7 @@ export function plural(count: number, one: string, many: string): string {
 
 export const es = {
   app: {
-    name: 'INDEPENDENCE',
+    name: 'MOVINGOUT',
     place: 'Madrid · EUR',
     scenarioLabel: 'Escenario',
     situacionLabel: 'Situación',
@@ -110,10 +110,12 @@ export const es = {
   } satisfies Record<Situacion, string>,
 
   verdict: {
+    sindatos: 'Sin datos todavía',
     ok: '✓ Te lo puedes permitir',
     justo: '⚠ Justo',
     faltaPrefix: '✗ Te faltan ',
     faltaSuffix: '/mes',
+    sindatosSub: 'Rellena importes en Costes y aquí aparecerá la respuesta.',
     okSub: 'Con los importes de hoy y sin contar la fianza como gasto.',
     justoSub: 'Sale, pero sin nada detrás. Un imprevisto lo tumba.',
     faltaSub: 'Con estas entradas, este piso no sale.',
@@ -147,6 +149,8 @@ export const es = {
     marginShockSuffix: 'meses de margen',
     bufferCovered: 'Cubierto',
     bufferShort: 'A medias',
+    bufferNoTarget: 'Sin objetivo',
+    bufferNoTargetSub: 'ponle un objetivo en Ajustes y aquí verás si llegas',
     bufferSubPrefix: 'objetivo',
     bufferSubMiddle: '· te quedan',
     bufferSubSuffix: 'tras entrar',

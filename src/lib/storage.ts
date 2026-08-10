@@ -40,7 +40,7 @@ import { newId } from './id';
 import { seedEntries } from './seed';
 import { today } from './history';
 
-const KEY = 'independence.state';
+const KEY = 'movingout.state';
 const SCHEMA_VERSION = 2;
 
 /** ~a third of income is the usual rule of thumb; it is editable in Ajustes. */

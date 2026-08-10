@@ -1,8 +1,8 @@
-# Design brief — Independence
+# Design brief — MovingOut
 
 **Hand this whole file to a designer.** It is self-contained: nothing below depends on reading the codebase, because there is no codebase yet. The app is unbuilt, and the interface is the next thing that has to exist.
 
-> **Answered — 2026-08-09.** This brief has been worked through. The palette (§6), the open problems (§9) and every deliverable (§11) are resolved in **[`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md)**, with a working prototype at [`mockups/independence.html`](mockups/independence.html).
+> **Answered — 2026-08-09.** This brief has been worked through. The palette (§6), the open problems (§9) and every deliverable (§11) are resolved in **[`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md)**, with a working prototype at [`mockups/movingout.html`](mockups/movingout.html).
 >
 > This file is now **historical**: it is kept because it records *why* each requirement exists, which the spec does not repeat. On any question of *what the design is*, the spec supersedes it. Keep §1–§4 and §7 accurate — they are domain truth, not design opinion — and treat §5, §6, §9 and §11 as the question that has since been answered.
 
@@ -276,7 +276,7 @@ Genuine open questions. Opinionated answers are welcome.
 
 ## 11. Deliverables
 
-> **Delivered.** All six, in [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) and [`mockups/independence.html`](mockups/independence.html).
+> **Delivered.** All six, in [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md) and [`mockups/movingout.html`](mockups/movingout.html).
 
 1. The **`:root` token block** — the palette and type scale as CSS custom properties (§6). This is the piece the build depends on most.
 2. **Resumen**, in its three states (affordable / marginal / not affordable), desktop and mobile.

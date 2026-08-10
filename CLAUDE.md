@@ -134,7 +134,7 @@ The notes that stop a plausible-looking calculation being quietly wrong:
 
 ## UI shape — the Command Center skin
 
-> **The design is resolved.** [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) holds the final token block, the component sheet, every screen and the mobile fork. **Read it before writing any component**, and prefer it over this section when the two disagree. A working prototype of all of it is [`docs/mockups/independence.html`](docs/mockups/independence.html) — open it in a browser, no build step. What follows is the summary.
+> **The design is resolved.** [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) holds the final token block, the component sheet, every screen and the mobile fork. **Read it before writing any component**, and prefer it over this section when the two disagree. A working prototype of all of it is [`docs/mockups/movingout.html`](docs/mockups/movingout.html) — open it in a browser, no build step. What follows is the summary.
 
 The visual and interaction grammar is lifted from a sibling repo the user owns: `~/repos/work/HotPotato_CommandCenter` (`index.html`). Read its Overview and Financiero tabs before designing a screen here. Locate the reference with:
 
@@ -232,7 +232,7 @@ The checker exits cleanly while `src/` does not exist, so it is inert until the 
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | the long-form code explanation |
 | [`docs/COST-CHECKLIST.md`](docs/COST-CHECKLIST.md) | the costs people forget; seeds the app's default entries |
 | [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) | **the resolved design** — tokens, components, every screen, the mobile fork, build order. Read before writing a component |
-| [`docs/mockups/independence.html`](docs/mockups/independence.html) | working prototype of the above; one self-contained file, open it in a browser |
+| [`docs/mockups/movingout.html`](docs/mockups/movingout.html) | working prototype of the above; one self-contained file, open it in a browser |
 | [`docs/DESIGN-BRIEF.md`](docs/DESIGN-BRIEF.md) | the brief that produced it. Historical now — kept for the *why*, superseded on every *what* |
 | [`docs/DEVLOG.md`](docs/DEVLOG.md) | errors, successes and dead ends, tagged with `IND***` IDs |
 | `CHANGELOG.md` | one section per deploy, no version numbers |

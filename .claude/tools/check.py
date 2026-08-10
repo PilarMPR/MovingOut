@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Independence — invariant checker.
+MovingOut — invariant checker.
 
 Static checks for the failure modes listed in CLAUDE.md "## The invariants".
 Stdlib only, no dependencies, no build step.
