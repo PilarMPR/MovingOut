@@ -176,6 +176,19 @@ describe('verdict', () => {
   it('says yes when there is real room', () => {
     expect(verdict(totals(73000, 64200))).toBe('ok');
   });
+
+  it('refuses to answer an empty budget', () => {
+    // Nothing in and nothing out is not a balanced budget, it is an empty one.
+    // Reporting "ok" on first launch is the same lie as printing 0,00 € for a
+    // blank amount — a claim where the question has not been asked yet.
+    expect(verdict(monthlyTotals([]))).toBe('sindatos');
+    expect(verdict(monthlyTotals([entry(), entry()]))).toBe('sindatos');
+  });
+
+  it('still answers when the two sides genuinely cancel out', () => {
+    // A real 730 in against a real 730 out is a marginal yes, not "no data".
+    expect(verdict(totals(73000, 73000))).toBe('justo');
+  });
 });
 
 describe('derive', () => {
@@ -195,6 +208,13 @@ describe('derive', () => {
     expect(poor.verdict).toBe('falta');
     expect(poor.sixth.kind).toBe('runway');
     expect(poor.runwayMonths).not.toBeNull();
+  });
+
+  it('does not report a buffer as covered when no target was ever set', () => {
+    const fresh = derive(scenario(base), SETTINGS, MUEBLES);
+    if (fresh.sixth.kind !== 'buffer') throw new Error('expected the buffer KPI');
+    expect(fresh.sixth.targetCents).toBe(0);
+    expect(fresh.sixth.covered).toBe(false);
   });
 
   it('has no branch that can render an infinite runway', () => {

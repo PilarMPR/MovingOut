@@ -11,6 +11,7 @@ import type { Store } from '../state/store';
 import type { Scenario } from '../types';
 
 const VERDICT_TONE: Record<Derived['verdict'], TagTone> = {
+  sindatos: 'neutral',
   ok: 'green',
   justo: 'amber',
   falta: 'red',
@@ -200,7 +201,8 @@ export function Comparar({ store }: { store: Store }) {
 
 function verdictText(d: Derived): string {
   if (d.verdict === 'falta') return es.verdict.faltaPrefix + formatEUR(d.shortfallCents);
-  return d.verdict === 'justo' ? es.verdict.justo : es.verdict.ok;
+  if (d.verdict === 'justo') return es.verdict.justo;
+  return d.verdict === 'sindatos' ? es.verdict.sindatos : es.verdict.ok;
 }
 
 function marginText(d: Derived): string {

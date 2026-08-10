@@ -30,6 +30,7 @@ The whole build order from `DESIGN-SYSTEM.md` §8, steps 1–11.
 
 ### Fixed
 - `parseAmount` read `12,999` as twelve thousand euros. In `es-ES` a lone comma is always the decimal separator; only a lone dot is ambiguous. See `docs/DEVLOG.md` — this is the first real `IND001`.
+- **The empty app said you could afford it.** On first launch the verdict read *✓ Te lo puedes permitir* and the colchón read *Cubierto*, both computed from nothing. New `sindatos` verdict, rendered with no hue, and a buffer is no longer "covered" against a target of zero. `docs/DEVLOG.md` has the general version of the lesson — every figure derived from missing amounts defaults to the confident answer unless it is told not to.
 
 ### Notes
 - `Buffer` now holds `targetCents` only. The reserve and appliance-fund contributions are ordinary monthly entries, so there is exactly one summing path. Rationale in `docs/DEVLOG.md`.

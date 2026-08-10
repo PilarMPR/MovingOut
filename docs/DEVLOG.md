@@ -18,6 +18,15 @@ Notably **not** yet earned after the first build: IND002, IND003, IND005, IND006
 
 ## Entries
 
+## 2026-08-09 · The empty app claimed you could afford it · no ID
+**What happened.** First launch, nothing filled in, and the verdict pill read **✓ Te lo puedes permitir** with a green `+0,00 €` balance. The sixth KPI said the colchón was `Cubierto` — against a target of zero.
+
+**Why.** `verdict()` branched on the sign of the balance and nothing else. With no data, `inCents` and `outCents` are both `0`, so the balance is `0`, which is neither negative nor below 5 % of zero, so it fell through to `ok`. `covered` had the same shape: `savings >= target` is trivially true when the target is `0`.
+
+**Fix.** A fourth verdict, `sindatos`, returned when nothing has been entered on either side, rendered as a neutral `--stone` pill with no hue — it is not a mild yes and not a mild no, it is the absence of an answer, and colouring it would make it one. `covered` now requires a target above zero. Two tests pin it, including one that a genuine 730-in-730-out *does* still answer (`justo`), so the guard cannot swallow a real result.
+
+**Lesson.** The design doc already says this — *"a zero is a claim, a dash is an admission"* — but it says it about **amounts**, and the rule was implemented only there, in `hasAmount`. The same rule applies to every derived figure computed **from** missing amounts. A verdict, a coverage ratio and a buffer status are all claims too, and they all default to the confident-looking answer when their inputs are empty. Worth checking the rest of `derive.ts` against this before adding anything to it: the question is not "does this handle zero" but "can this tell zero from nothing".
+
 ## 2026-08-09 · `parseAmount` read `12,999` as twelve thousand · IND001
 **What happened.** A test asserting whole cents failed: `parseAmount('12,999')` returned `1299900` (12 999 €) instead of `1300` (13,00 €).
 

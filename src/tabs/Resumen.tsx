@@ -16,13 +16,17 @@ import {
 import type { Derived, SixthKpi } from '../lib/derive';
 import type { Store } from '../state/store';
 
+// `sindatos` is neutral on purpose. It is not a mild yes and not a mild no —
+// it is the absence of an answer, and colouring it would make it one.
 const VERDICT_TONE: Record<Derived['verdict'], TagTone> = {
+  sindatos: 'neutral',
   ok: 'green',
   justo: 'amber',
   falta: 'red',
 };
 
 const VERDICT_DOT: Record<Derived['verdict'], DotTone> = {
+  sindatos: 'accent',
   ok: 'green',
   justo: 'amber',
   falta: 'red',
@@ -74,18 +78,29 @@ function SixthCard({ sixth }: { sixth: SixthKpi }) {
     );
   }
 
+  const noTarget = sixth.targetCents === 0;
   return (
     <KpiCard
       label={es.resumen.kpiBuffer}
-      value={sixth.covered ? es.resumen.bufferCovered : es.resumen.bufferShort}
-      tone={sixth.covered ? 'plain' : 'warn'}
+      value={
+        noTarget
+          ? es.resumen.bufferNoTarget
+          : sixth.covered
+            ? es.resumen.bufferCovered
+            : es.resumen.bufferShort
+      }
+      tone={noTarget ? 'plain' : sixth.covered ? 'plain' : 'warn'}
       sub={
-        <>
-          {es.resumen.bufferSubPrefix} {formatEUR(sixth.targetCents)}
-          <br />
-          {es.resumen.bufferSubMiddle} {formatEUR(sixth.savingsAfterUpfrontCents)}{' '}
-          {es.resumen.bufferSubSuffix}
-        </>
+        noTarget ? (
+          es.resumen.bufferNoTargetSub
+        ) : (
+          <>
+            {es.resumen.bufferSubPrefix} {formatEUR(sixth.targetCents)}
+            <br />
+            {es.resumen.bufferSubMiddle} {formatEUR(sixth.savingsAfterUpfrontCents)}{' '}
+            {es.resumen.bufferSubSuffix}
+          </>
+        )
       }
     />
   );
@@ -173,14 +188,18 @@ export function Resumen({ store }: { store: Store }) {
       ? es.verdict.faltaPrefix + formatEUR(derived.shortfallCents) + es.verdict.faltaSuffix
       : derived.verdict === 'justo'
         ? es.verdict.justo
-        : es.verdict.ok;
+        : derived.verdict === 'sindatos'
+          ? es.verdict.sindatos
+          : es.verdict.ok;
 
   const verdictSub =
     derived.verdict === 'falta'
       ? es.verdict.faltaSub
       : derived.verdict === 'justo'
         ? es.verdict.justoSub
-        : es.verdict.okSub;
+        : derived.verdict === 'sindatos'
+          ? es.verdict.sindatosSub
+          : es.verdict.okSub;
 
   const largest = breakdown.length > 0 ? breakdown[0].monthlyCents : 0;
 
@@ -233,7 +252,15 @@ export function Resumen({ store }: { store: Store }) {
           <KpiCard
             label={es.resumen.kpiBalance}
             cents={totals.balanceCents}
-            tone={derived.verdict === 'falta' ? 'neg' : derived.verdict === 'justo' ? 'warn' : 'pos'}
+            tone={
+              derived.verdict === 'falta'
+                ? 'neg'
+                : derived.verdict === 'justo'
+                  ? 'warn'
+                  : derived.verdict === 'sindatos'
+                    ? 'plain'
+                    : 'pos'
+            }
             signed
             hero
             sub={

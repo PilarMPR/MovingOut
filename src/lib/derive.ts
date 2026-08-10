@@ -299,7 +299,7 @@ export function drift(entries: Entry[]): Cents | null {
 
 // ── the verdict, and the sixth KPI ───────────────────────────────────────
 
-export type VerdictKind = 'ok' | 'justo' | 'falta';
+export type VerdictKind = 'sindatos' | 'ok' | 'justo' | 'falta';
 
 /**
  * "Marginal" is a balance that survives on paper and not in life. Five percent
@@ -309,6 +309,11 @@ export type VerdictKind = 'ok' | 'justo' | 'falta';
 const MARGINAL_SHARE_OF_OUT = 5;
 
 export function verdict(totals: MonthlyTotals): VerdictKind {
+  // Nothing in and nothing out is not a balanced budget, it is an empty one.
+  // A zero balance here would render "te lo puedes permitir" on first launch,
+  // which is the same lie as printing 0,00 € for a blank amount: a claim where
+  // the honest answer is that the question has not been asked yet.
+  if (totals.inCents === 0 && totals.outCents === 0) return 'sindatos';
   if (totals.balanceCents < 0) return 'falta';
   if (totals.balanceCents < percentOf(totals.outCents, MARGINAL_SHARE_OF_OUT)) return 'justo';
   return 'ok';
@@ -395,7 +400,9 @@ export function derive(scenario: Scenario, settings: Settings, furnitureLabel: s
     sixth = {
       kind: 'buffer',
       targetCents: scenario.buffer.targetCents,
-      covered: savingsAfterUpfrontCents >= scenario.buffer.targetCents,
+      // No target is not a covered target. Reporting "cubierto" against a goal
+      // of zero would be another claim made out of missing data.
+      covered: scenario.buffer.targetCents > 0 && savingsAfterUpfrontCents >= scenario.buffer.targetCents,
       savingsAfterUpfrontCents,
     };
   }
