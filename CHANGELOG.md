@@ -2,7 +2,34 @@
 
 One section per deploy. No version numbers — this is a personal app with a single user, and a semver number would be ceremony without a consumer.
 
+> **`package.json` does carry a version, and that is not a reversal of the line above.** Once the app is packaged, the build tools stamp artifacts with it: the filename `MovingOut-1.0.0.AppImage`, Android's `versionName`. Left at `0.0.0` those read as broken rather than unversioned. So the *artifacts* are versioned because something downstream demands it, and the *sections here* still are not, because nothing does. Bump `package.json` and `android/app/build.gradle` together when an artifact goes somewhere.
+
 This tracks **code**. The app's own Historial tab tracks **prices**, which is a different changelog entirely — worth saying which one you mean.
+
+---
+
+## Unreleased — a desktop app and an Android app, from the same `dist/`
+
+Neither is a port. Both shells wrap exactly the build the web target already produced; there is no platform-specific source anywhere in the repo, and `src/` was not touched.
+
+> **`npm install` is required after pulling** — Electron, electron-builder and Capacitor are new. Electron's binary is a 221 MB post-install download, and it is gated by this repo's `allowScripts` policy, so `electron@43.4.0` had to be listed there explicitly.
+
+### Added
+- **`electron/main.cjs` — the desktop shell.** Registers `app:` as a standard, secure scheme and serves `dist/` from `app://movingout` rather than loading `dist/index.html` over `file://`. That is not decoration: `file://` pages get an *opaque* origin, Chromium keys localStorage to an origin, and this app keeps every scenario and price revision there. Served from a real origin, storage behaves exactly as it does in the browser. External links open in the real browser; navigation away from the origin is blocked.
+- **`capacitor.config.ts` and `android/`** — Capacitor 8, `appId` `es.movingout.app`, minSdk 24 / targetSdk 36. Capacitor serves the same assets from `https://localhost`, which is a secure origin, so the storage argument above holds unchanged on the phone.
+- **`scripts/make-icons.py`** — every icon, generated from the `:root` block in `tokens.css` instead of drawn. Writes `public/favicon.svg`, both PWA PNGs, and the full Android launcher set (legacy, round, and adaptive foreground at five densities) plus the adaptive background colour.
+- **Build targets in `vite.config.ts`.** `APP_TARGET` selects `web` (default), `electron` or `android`. The service worker is built only for `web` — inside a shell that is already offline it adds nothing and can serve a stale shell after an update.
+- **npm scripts**: `desktop`, `desktop:dev`, `desktop:dist`, `android`, `android:run`, `android:apk`.
+
+### Fixed
+- **The icons were still the pre-reskin palette**, and Android's were Capacitor's stock blue logo. The mark is now ink ground, paper `I`, `--accent-l` `N` — `--accent-l` and not `--accent`, because indigo `#4438CA` on near-black ink is a smudge at 48 px, and `tokens.css` already labels that token "the accent, legible on ink".
+- **The PWA manifest carried the old palette too** — `background_color` `#EBE4D9` and `theme_color` `#1E1813`, both from before the re-skin. Now `#EFEDE7` / `#17191C`. On Android these are what the splash and status bar are painted with, so the packaging is what made it visible. Same fix to the `theme-color` meta in `index.html`.
+
+### Notes
+- **Two desktop artifacts, because the AppImage will not run on this machine.** It needs `libfuse.so.2`; Ubuntu ships FUSE 3 and the compat package needs sudo, which there isn't. So `tar.gz` is built alongside it — unpack anywhere and run `movingout`, no FUSE involved — and that is the artifact to copy to another machine. The AppImage stays for machines that do have FUSE. Locally the app runs from `release/linux-unpacked/movingout` via a validated `.desktop` entry in `~/.local/share/applications/`.
+- **Every desktop launch path passes `--ozone-platform=x11`.** Chromium's Wayland backend segfaults on this compositor before it paints. It cannot be set from `main.cjs` — see `docs/DEVLOG.md`. The renderer sandbox stays on; only the display backend changes.
+- The APK is **debug-signed**, with the `~/.android/debug.keystore` that was already on this machine. That is enough to install by hand and not enough to publish.
+- `release/` is now gitignored. `android/` is committed, as Capacitor intends; its own `.gitignore` covers `local.properties` and build output.
 
 ---
 

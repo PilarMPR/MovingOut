@@ -1,16 +1,28 @@
 {
   "name": "movingout",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Calculadora de independencia — Madrid, EUR",
+  "author": "PilarMPR",
+  "main": "electron/main.cjs",
+  "desktopName": "movingout.desktop",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "desktop": "APP_TARGET=electron npm run build && electron . --ozone-platform=x11",
+    "desktop:dev": "ELECTRON_DEV=1 electron . --ozone-platform=x11",
+    "desktop:dist": "APP_TARGET=electron npm run build && electron-builder --linux",
+    "android": "APP_TARGET=android npm run build && cap sync android",
+    "android:run": "npm run android && cap run android",
+    "android:apk": "npm run android && cd android && ./gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
     "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@fontsource/public-sans": "^5.3.0",
@@ -18,11 +30,14 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.21",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.0",
@@ -30,7 +45,36 @@
     "vite-plugin-pwa": "^1.0.0",
     "vitest": "^3.2.0"
   },
+  "build": {
+    "appId": "es.movingout.app",
+    "productName": "MovingOut",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*",
+      "package.json",
+      "src/styles/tokens.css"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Office",
+      "icon": "public/icon-512.png",
+      "executableArgs": [
+        "--ozone-platform=x11"
+      ],
+      "executableName": "movingout",
+      "syncDesktopName": true,
+      "synopsis": "Calculadora de independencia"
+    }
+  },
   "allowScripts": {
-    "esbuild@0.28.2": true
+    "esbuild@0.28.2": true,
+    "electron@43.4.0": true,
+    "electron-winstaller@5.4.0": false
   }
 }

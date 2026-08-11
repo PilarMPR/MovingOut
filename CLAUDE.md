@@ -14,7 +14,9 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 
 > **Status — 2026-08-11: built, and re-skinned to the `Independencia` design.** All eleven steps of the build order in `DESIGN-SYSTEM.md` §8 landed on 2026-08-09: tokens, types, `lib`, storage, `i18n`, the component sheet, all seven screens, the mobile fork, and the PWA.
 >
-> Step 12 — the re-skin to the Claude Design project *Moving out finances app* (`Independencia.dc.html`) — landed on 2026-08-11: a new palette and type stack, a `Sistema` tab, and layout changes to Resumen, Costes, Muebles, Historial and Comparar. **`npm install` is required after pulling**: the mono and body faces changed packages. `tsc` clean, 85 tests over `src/lib` green, production build succeeds. Nothing is deployed yet.
+> Step 12 — the re-skin to the Claude Design project *Moving out finances app* (`Independencia.dc.html`) — landed on 2026-08-11: a new palette and type stack, a `Sistema` tab, and layout changes to Resumen, Costes, Muebles, Historial and Comparar. **`npm install` is required after pulling**: the mono and body faces changed packages. `tsc` clean, 85 tests over `src/lib` green, production build succeeds.
+>
+> **Also 2026-08-11: it runs as a desktop app and as an Android APK**, both wrapping the same `dist/` — Electron (`electron/main.cjs`) and Capacitor (`android/`). A `.desktop` entry is installed locally; the APK is debug-signed and built but **not yet installed on a phone**. Still nothing deployed to a public URL. See `CHANGELOG.md`.
 
 > **Node lives at `/home/p/.local/share/node/bin` and is not on `PATH`.** `export PATH="/home/p/.local/share/node/bin:$PATH"` before any `npm` command, or every script in the next section reports "command not found" and it looks like the toolchain is missing when it is not.
 
@@ -25,7 +27,26 @@ npm install
 npm run dev          # Vite dev server
 npm run build        # production build
 npm run test         # Vitest, src/lib only
+
+npm run desktop      # build + launch the Electron shell
+npm run desktop:dist # package release/ — .AppImage, .tar.gz and linux-unpacked/
+npm run android      # build + cap sync android
+npm run android:apk  # debug APK via Gradle
 ```
+
+**Take the `.tar.gz`, not the `.AppImage`.** The AppImage needs `libfuse.so.2`, which this machine does not have and cannot install without sudo. The tar.gz unpacks and runs anywhere. Artifact versions come from `package.json` — bump it and `android/app/build.gradle` together.
+
+**The native builds need two toolchains that are not on `PATH`** — same situation as Node, below:
+
+```bash
+export JAVA_HOME="$HOME/.local/share/jdk"        # Temurin 21; the system java is a JRE, no javac
+export ANDROID_HOME="$HOME/Android/Sdk"          # platform 36, build-tools 36.x, licences accepted
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
+```
+
+Both desktop and Android wrap **the same `dist/`** the web build produces — there is no platform-specific source. `APP_TARGET` (`web` | `electron` | `android`) selects the build; the service worker is built only for `web`.
+
+Icons are **generated, not drawn** — `python3 scripts/make-icons.py` reads the `:root` block and rewrites `public/` and the Android launcher set. Run it after any palette change, or the icons keep the old one silently.
 
 Stack: **React + TypeScript + Vite + Tailwind**, installable as a **PWA** (`vite-plugin-pwa`), tested with **Vitest**. No backend, no accounts, no auth — data lives in `localStorage`, and JSON export/import is the backup and device-transfer story.
 
@@ -185,6 +206,8 @@ They never overlap. A category never gets a colour of its own — breakdown bars
 - **`src/state/store.ts`** — the `useStore` hook: the one piece of mutable state, and the only caller of `storage`. Not in `lib/`, because `lib/` does not know React exists. Tabs receive it as a prop; there is no context.
 - **`src/components/`** is the twelve-component sheet from `DESIGN-SYSTEM.md` §4; **`src/tabs/`** is one file per screen, assembled from those and reaching past them for nothing. `src/tabs/Sistema.tsx` renders that sheet against the live tokens, which is what stops it drifting from what ships.
 
+- **`electron/` and `android/` are shells, not forks.** Neither contains app logic, and neither is allowed to: they exist to host `dist/`. Both are careful to serve it from a **real origin** — `app://movingout` on the desktop, `https://localhost` on Android — because `localStorage` is keyed to an origin and a `file://` page's origin is opaque. Loading `dist/index.html` directly would render fine and lose data. See `docs/DEVLOG.md`.
+
 Long-form, with the reasoning: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Workflow
@@ -254,7 +277,7 @@ English for `CLAUDE.md`, `.claude/`, `docs/`, `CHANGELOG.md`, code identifiers, 
 The build order is done and the re-skin has landed, type-checked, tested and built. What is left is the part only real use can drive:
 
 1. **Fill in one real scenario** and see whether the seeded checklist is missing anything — the seed is a prediction from `COST-CHECKLIST.md`, not a used list.
-2. **Deploy** to a static host and install it on the phone. The export/import round-trip is the only backup story, so it wants testing on the device that will actually hold the data.
+2. **Install the APK on the phone** — `android:apk` produces a debug-signed one, and `adb install` needs a device connected (there was none when it was built). The export/import round-trip is the only backup story, so it wants testing on the device that will actually hold the data. A **static deploy is now optional rather than the only route onto the phone**, but it is still the easiest way to reinstall.
 3. **Prune the invariants.** Seven of the eight have never fired. After a few weeks of real edits, delete the ones that never do — `docs/DEVLOG.md` has the recurrence table.
 
 Known soft spots, in case one bites: `<input type="date">` renders in the *browser's* locale, not the document's; and a near-zero deficit produces an honest but startling runway (a 12 €/mes gap against 4 900 € of savings is genuinely 408 months).

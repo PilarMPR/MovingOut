@@ -6,11 +6,19 @@ import { VitePWA } from 'vite-plugin-pwa';
 // so every asset URL has to be relative. Override with BASE_PATH at build time.
 const base = process.env.BASE_PATH ?? '/';
 
+// Three targets from one source. 'web' is the PWA on a static host; 'electron'
+// and 'android' wrap the same build in a native shell, where the service worker
+// is not just redundant but harmful — an offline cache inside an app that is
+// already offline has nothing to add and one way to fail, by serving a stale
+// shell after an update. Both shells serve the assets themselves.
+const target = process.env.APP_TARGET ?? 'web';
+
 export default defineConfig({
   base,
   plugins: [
     react(),
     VitePWA({
+      disable: target !== 'web',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
@@ -21,8 +29,12 @@ export default defineConfig({
         start_url: base,
         scope: base,
         display: 'standalone',
-        background_color: '#EBE4D9',
-        theme_color: '#1E1813',
+        // --bg and --ink from the Independencia token block. These two are the
+        // only palette values that cannot read tokens.css: the manifest is
+        // written before any stylesheet loads, and on Android they are what the
+        // splash and the status bar are painted with.
+        background_color: '#EFEDE7',
+        theme_color: '#17191C',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
