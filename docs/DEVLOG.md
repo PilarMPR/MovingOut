@@ -18,6 +18,23 @@ Notably **not** yet earned after the first build: IND002, IND003, IND005, IND006
 
 ## Entries
 
+## 2026-08-11 · Re-skinned to `Independencia`, and two written rules were overturned · no ID
+
+**What happened.** The Claude Design project *Moving out finances app* (`Independencia.dc.html`) replaced the palette, the type stack and several screen layouts. Most of it was a straight port. Two parts were not, because the design contradicts things `DESIGN-SYSTEM.md` had committed to in writing, and a design that disagrees with a doc is only worth adopting if you can say which one was wrong.
+
+**`--blue` now exists, and the old rule was too broad.** The doc said: *"`pagado` and `pausado` get no hue at all … which is why there is no `--info` token."* The reasoning was that neither state is good or bad. That is true of both, but it conflates two different things. `pagado` is a **positive statement of a fact** — this is settled — as are *refundable* and *pago único*. `pausado` is the **absence** of one: a row deliberately excluded from the totals. Facts can carry a colour without being judgements; absences cannot, because any hue turns an exclusion into a verdict. So `--blue` carries the three facts, `pausado` keeps the neutral pill, and the rule is now four semantics rather than three. The old rule was not wrong about `pausado`; it was wrong to extend that to `pagado`.
+
+**Light mode stayed, against the design.** The design ships Papel, Plano and Noche behind a `data-pal` attribute. Only Papel is built. The `data-pal` switch in a `.dc.html` is a *design-tool* affordance — the props panel, so a designer can flip variants in preview — and reading it as a product requirement would have cost a `Settings` field, a storage version bump with an `ensureShape` backfill (IND003) and a contrast pass over eight screens, in exchange for undoing the product's own argument that it commits to one look. Recorded in `DESIGN-SYSTEM.md` §2 with that price attached, so it is a decision rather than an omission.
+
+**Two smaller things the port fixed rather than copied.**
+
+- **Comparar was using the accent to mean "good".** The old screen gave the *best* cell in each row an accent underline, which is exactly the overlap §1 forbids. The design's answer is better and it is the one now built: the accent tints the column of the scenario **you are standing in** — that is interaction, *where you are* — and the per-cell deltas carry green/red by outcome. `FIANZA (DEVOLVIBLE)` is deliberately neutral: a bigger deposit is more cash to find and none of it is lost, so neither direction is better and colouring it either way would be a claim.
+- **The `▲ 14 %` chip beside an amount had nowhere to live** in a nine-column grid. Dropping it would have lost the at-a-glance "this moved" signal, so it moved into the revision counter at the end of the row: the button shows the count and takes red or green from the direction of the **last** revision. Same signal, one column cheaper, and it is already the drawer's handle.
+
+**Lesson.** Both reversals came out of the same question, which is worth asking of any design hand-off: *is this contradiction a mistake, or does the design know something the doc didn't?* `--blue` was the second — the doc had over-generalised from one true observation. Noche was the first — a preview affordance read as a product feature. Neither is answerable by looking at the design alone; you have to go back to the sentence in the doc and ask what it was actually protecting.
+
+**A second lesson, and a cheaper one: `node` was on the machine the whole time.** It sits at `/home/p/.local/share/node/bin` and is not on `PATH`, so `command -v node` and a `find / -maxdepth 4` both came back empty and the whole re-skin was written under the belief that it could not be compiled. Substitutes were built instead — a script to check the i18n key graph, another for unused imports, esbuild's native binary to parse every file. They were worth having and they caught two real errors, but they cost time and they proved much less than `tsc` did in one second. **An absent tool is a claim; verify it the way you would verify a number.** One `find / -xdev -name node` would have settled it. `CLAUDE.md` now records the path.
+
 ## 2026-08-09 · The empty app claimed you could afford it · no ID
 **What happened.** First launch, nothing filled in, and the verdict pill read **✓ Te lo puedes permitir** with a green `+0,00 €` balance. The sixth KPI said the colchón was `Cubierto` — against a target of zero.
 

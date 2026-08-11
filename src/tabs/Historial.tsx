@@ -20,18 +20,42 @@ export function Historial({ store }: { store: Store }) {
     return view === 'up' ? line.vsPreviousCents > 0 : line.vsPreviousCents < 0;
   });
 
+  const drift = derived.driftCents;
+  const driftClass =
+    drift === null || drift === 0 ? 'drift' : drift > 0 ? 'drift up' : 'drift down';
+  const driftNote =
+    drift === null ? (
+      es.historial.driftNoneNote
+    ) : drift > 0 ? (
+      <>
+        {es.historial.driftUpPrefix} <b>{formatEUR(drift)}</b> {es.historial.driftUpSuffix}
+      </>
+    ) : drift < 0 ? (
+      <>
+        {es.historial.driftDownPrefix} <b>{formatEUR(-drift)}</b> {es.historial.driftDownSuffix}
+      </>
+    ) : (
+      es.historial.driftFlatNote
+    );
+
   return (
     <div className="stack">
-      <div className="kgrid k4">
-        <KpiCard
-          label={es.historial.kpiDrift}
-          cents={derived.driftCents ?? undefined}
-          value={derived.driftCents === null ? es.common.none : undefined}
-          signed
-          hero
-          tone={derived.driftCents === null ? 'plain' : derived.driftCents > 0 ? 'neg' : 'pos'}
-          sub={derived.driftCents === null ? es.historial.kpiDriftNone : es.historial.kpiDriftSub}
-        />
+      {/* Drift is the question this tab answers, so it is the tab's headline
+          rather than one KPI among four: is this piso more expensive than when
+          I planned it? The banner takes the sign of the answer. */}
+      <div className={driftClass}>
+        <div>
+          <div className="dl2">{es.historial.driftPanel}</div>
+          <div className="dv">
+            {derived.driftCents === null
+              ? es.common.none
+              : formatSignedEUR(derived.driftCents) + es.common.perMonth}
+          </div>
+        </div>
+        <p>{driftNote}</p>
+      </div>
+
+      <div className="kgrid k3">
         <KpiCard
           label={es.historial.kpiRevisions}
           value={stats.revisionCount}
@@ -63,9 +87,10 @@ export function Historial({ store }: { store: Store }) {
 
       <Panel
         label={es.historial.panel}
+        tone="blue"
         actions={
           <span>
-            {es.historial.note} · {es.historial.newestFirst}
+            {es.historial.noteShort} · {es.historial.newestFirst}
           </span>
         }
       >

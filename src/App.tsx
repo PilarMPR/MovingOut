@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from './components/Button';
+import { VerdictTag } from './components/VerdictTag';
 import { es } from './i18n/es';
 import { useStore } from './state/store';
 import { Ajustes } from './tabs/Ajustes';
@@ -10,10 +11,27 @@ import { Historial } from './tabs/Historial';
 import { Muebles } from './tabs/Muebles';
 import { Proyectos } from './tabs/Proyectos';
 import { Resumen } from './tabs/Resumen';
+import { Sistema } from './tabs/Sistema';
 import { SITUACIONES } from './types';
 
-const TABS = ['resumen', 'costes', 'muebles', 'proyectos', 'historial', 'ajustes'] as const;
-type Tab = (typeof TABS)[number] | 'comparar';
+/** The seven product tabs, in the order the design puts them. */
+const TABS = [
+  'resumen',
+  'costes',
+  'muebles',
+  'proyectos',
+  'historial',
+  'comparar',
+  'ajustes',
+] as const;
+
+/**
+ * Sistema is the component sheet rendered against the live tokens. It is not a
+ * product screen, which is why it sits apart on the right of the tab row rather
+ * than in the run of seven — and why the phone, where the sheet is unreadable
+ * anyway, does not carry it at all.
+ */
+type Tab = (typeof TABS)[number] | 'sistema';
 
 /** The fork is real at 820 px: mobile renders a different component, not a
  *  reflowed table. src/lib does not know which one is mounted. */
@@ -39,10 +57,14 @@ export function App() {
   const [onlyEssential, setOnlyEssential] = useState(false);
   const isMobile = useIsMobile();
 
-  const { scenario, state } = store;
+  const { scenario, state, derived } = store;
+
+  // Rotating onto a phone while on Sistema would otherwise strand the user on a
+  // screen with no way back, because the bottom nav does not carry it.
+  const active: Tab = isMobile && tab === 'sistema' ? 'resumen' : tab;
 
   const content = () => {
-    switch (tab) {
+    switch (active) {
       case 'costes':
         return isMobile ? (
           <CostesMobile store={store} filters={filters} onFilters={setFilters} />
@@ -61,78 +83,98 @@ export function App() {
         return <Ajustes store={store} />;
       case 'comparar':
         return <Comparar store={store} />;
+      case 'sistema':
+        return <Sistema />;
       default:
         return <Resumen store={store} />;
     }
   };
 
   // Costes on mobile renders edge to edge: the card list is the page.
-  const bare = isMobile && tab === 'costes';
+  const bare = isMobile && active === 'costes';
 
   return (
     <div className="shell">
       <header className="hdr">
-        <div className="hdr-id">
-          <b>{es.app.name}</b>
-          <em>{es.app.place}</em>
-        </div>
-        <div className="hdr-r">
-          <select
-            className="sel-dark acc"
-            aria-label={es.app.scenarioLabel}
-            value={scenario.id}
-            onChange={(event) => store.selectScenario(event.target.value)}
-          >
-            {state.scenarios.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <select
-            className="sel-dark"
-            aria-label={es.app.situacionLabel}
-            value={scenario.situacion}
-            onChange={(event) =>
-              store.patchScenario({ situacion: event.target.value as typeof scenario.situacion })
-            }
-          >
-            {SITUACIONES.map((situacion) => (
-              <option key={situacion} value={situacion}>
-                {es.situacion[situacion]}
-              </option>
-            ))}
-          </select>
-          <Button variant="onInk" onClick={() => setTab('comparar')}>
-            {es.app.compare}
-          </Button>
-          <Button variant="onInk" onClick={() => store.addScenario(es.scenario.firstName)}>
-            {es.app.newScenario}
-          </Button>
-        </div>
-      </header>
+        <div className="hdr-bar">
+          <div className="hdr-id">
+            <b>{es.app.name}</b>
+            <em>{es.app.place}</em>
+          </div>
 
-      {!isMobile && (
-        <nav className="tabs">
-          {TABS.map((name) => (
-            <button
-              key={name}
-              type="button"
-              className={tab === name ? 'tab on' : 'tab'}
-              onClick={() => setTab(name)}
+          <div className="hdr-grp">
+            <span>{es.app.scenarioLabel}</span>
+            <select
+              className="sel-dark"
+              aria-label={es.app.scenarioLabel}
+              value={scenario.id}
+              onChange={(event) => store.selectScenario(event.target.value)}
             >
-              {es.tabs[name]}
+              {state.scenarios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hdr-grp">
+            <span>{es.app.situacionLabel}</span>
+            <select
+              className="sel-dark"
+              aria-label={es.app.situacionLabel}
+              value={scenario.situacion}
+              onChange={(event) =>
+                store.patchScenario({ situacion: event.target.value as typeof scenario.situacion })
+              }
+            >
+              {SITUACIONES.map((situacion) => (
+                <option key={situacion} value={situacion}>
+                  {es.situacion[situacion]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="hdr-gap" />
+
+          <div className="hdr-r">
+            {/* The answer rides in the chrome: it is true on every tab, so it
+                should not be something you navigate back to Resumen to read. */}
+            <VerdictTag
+              verdict={derived.verdict}
+              shortfallCents={derived.shortfallCents}
+              big
+            />
+            <Button variant="onInk" onClick={() => store.addScenario(es.scenario.firstName)}>
+              {es.app.newScenario}
+            </Button>
+          </div>
+        </div>
+
+        {!isMobile && (
+          <nav className="tabs">
+            {TABS.map((name) => (
+              <button
+                key={name}
+                type="button"
+                className={active === name ? 'tab on' : 'tab'}
+                onClick={() => setTab(name)}
+              >
+                {es.tabs[name]}
+              </button>
+            ))}
+            <div className="hdr-gap" />
+            <button
+              type="button"
+              className={active === 'sistema' ? 'tab sys on' : 'tab sys'}
+              onClick={() => setTab('sistema')}
+            >
+              {es.tabs.sistema}
             </button>
-          ))}
-          <button
-            type="button"
-            className={tab === 'comparar' ? 'tab on' : 'tab'}
-            onClick={() => setTab('comparar')}
-          >
-            {es.tabs.comparar}
-          </button>
-        </nav>
-      )}
+          </nav>
+        )}
+      </header>
 
       {bare ? content() : <main className="body">{content()}</main>}
 
@@ -142,21 +184,13 @@ export function App() {
             <button
               key={name}
               type="button"
-              className={tab === name ? 'on' : undefined}
+              className={active === name ? 'on' : undefined}
               onClick={() => setTab(name)}
             >
               <i />
               {es.tabsShort[name]}
             </button>
           ))}
-          <button
-            type="button"
-            className={tab === 'comparar' ? 'on' : undefined}
-            onClick={() => setTab('comparar')}
-          >
-            <i />
-            {es.tabsShort.comparar}
-          </button>
         </nav>
       )}
     </div>

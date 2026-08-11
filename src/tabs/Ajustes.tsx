@@ -161,10 +161,17 @@ export function Ajustes({ store }: { store: Store }) {
 
       <Panel
         label={es.ajustes.panelData}
+        tone="blue"
         body={
           <div className="field">
             <span className="flab">{es.ajustes.exportTitle}</span>
             <span className="fhint">{es.ajustes.exportHint}</span>
+            {/* The JSON is not a convenience, it is the only copy that exists.
+                Saying so quietly, in the amber box, is the whole backup story. */}
+            <div className="callout" style={{ marginTop: 4 }}>
+              <div className="cl">{es.ajustes.backupTitle}</div>
+              <p>{es.ajustes.backupNote}</p>
+            </div>
             <div className="row-actions" style={{ marginTop: 4 }}>
               <Button variant="accent" onClick={download}>
                 {es.ajustes.exportButton}

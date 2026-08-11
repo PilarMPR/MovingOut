@@ -2,32 +2,91 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 import { Insight } from '../components/Insight';
 import { Panel } from '../components/Panel';
-import { Tag } from '../components/Tag';
-import type { TagTone } from '../components/Tag';
+import { VerdictTag } from '../components/VerdictTag';
 import { es } from '../i18n/es';
 import { derive, identicalConcepts, type Derived } from '../lib/derive';
 import { formatEUR, formatMonths, formatSignedEUR } from '../lib/money';
 import type { Store } from '../state/store';
 import type { Scenario } from '../types';
 
-const VERDICT_TONE: Record<Derived['verdict'], TagTone> = {
-  sindatos: 'neutral',
-  ok: 'green',
-  justo: 'amber',
-  falta: 'red',
-};
-
+/** Which way is better, so the delta can be coloured by outcome and not by sign. */
 type Better = 'high' | 'low' | 'none';
 
 interface Row {
   label: string;
-  /** Which direction wins, so the accent underline marks "look here". */
   better: Better;
-  values: number[];
+  /** The number the delta is computed from. `null` for a text-only row. */
+  value: (derived: Derived) => number | null;
   render: (derived: Derived) => ReactNode;
-  /** Sign colouring, applied only where sign is genuinely the meaning. */
-  tone?: (derived: Derived) => 'pos' | 'neg' | undefined;
+  /** Money formats as EUR; a count formats as a bare number. */
+  money?: boolean;
 }
+
+const ROWS: Row[] = [
+  {
+    label: es.comparar.rowBalance,
+    better: 'high',
+    value: (d) => d.totals.balanceCents,
+    render: (d) => formatSignedEUR(d.totals.balanceCents),
+    money: true,
+  },
+  {
+    label: es.comparar.rowIn,
+    better: 'high',
+    value: (d) => d.totals.inCents,
+    render: (d) => formatEUR(d.totals.inCents),
+    money: true,
+  },
+  {
+    label: es.comparar.rowOut,
+    better: 'low',
+    value: (d) => d.totals.outCents,
+    render: (d) => formatEUR(d.totals.outCents),
+    money: true,
+  },
+  {
+    label: es.comparar.rowUpfront,
+    better: 'low',
+    value: (d) => d.upfront.cashCents,
+    render: (d) => formatEUR(d.upfront.cashCents),
+    money: true,
+  },
+  {
+    label: es.comparar.rowSpend,
+    better: 'low',
+    value: (d) => d.upfront.spendCents,
+    render: (d) => formatEUR(d.upfront.spendCents),
+    money: true,
+  },
+  {
+    // Neutral on purpose: a bigger fianza is more cash to find and none of it
+    // is lost, so calling either direction "better" would be a lie.
+    label: es.comparar.rowFianza,
+    better: 'none',
+    value: (d) => d.upfront.refundableCents,
+    render: (d) => formatEUR(d.upfront.refundableCents),
+    money: true,
+  },
+  {
+    label: es.comparar.rowSavingsLeft,
+    better: 'high',
+    value: (d) => d.savingsAfterUpfrontCents,
+    render: (d) => formatEUR(d.savingsAfterUpfrontCents),
+    money: true,
+  },
+  {
+    label: es.comparar.rowMargin,
+    better: 'none',
+    value: () => null,
+    render: (d) => marginText(d),
+  },
+  {
+    label: es.comparar.rowMissing,
+    better: 'low',
+    value: (d) => d.coverage.total - d.coverage.withAmount,
+    render: (d) => String(d.coverage.total - d.coverage.withAmount),
+  },
+];
 
 export function Comparar({ store }: { store: Store }) {
   const { state } = store;
@@ -48,161 +107,119 @@ export function Comparar({ store }: { store: Store }) {
     derived: derive(scenario, state.settings, es.resumen.furnitureLine),
   }));
 
+  // Differences are measured from where you are standing. If the active
+  // scenario is not one of the compared ones, the first column is the ground.
+  const hereIndex = Math.max(
+    0,
+    columns.findIndex((c) => c.scenario.id === state.activeScenarioId),
+  );
+  const here = columns[hereIndex];
   const same = onlyDifferences ? identicalConcepts(scenarios) : 0;
 
-  const rows: Row[] = [
-    {
-      label: es.comparar.rowVerdict,
-      better: 'none',
-      values: columns.map(() => 0),
-      render: (d) => <Tag tone={VERDICT_TONE[d.verdict]}>{verdictText(d)}</Tag>,
-    },
-    {
-      label: es.comparar.rowBalance,
-      better: 'high',
-      values: columns.map((c) => c.derived.totals.balanceCents),
-      render: (d) => formatSignedEUR(d.totals.balanceCents),
-      tone: (d) => (d.totals.balanceCents >= 0 ? 'pos' : 'neg'),
-    },
-    {
-      label: es.comparar.rowIn,
-      better: 'high',
-      values: columns.map((c) => c.derived.totals.inCents),
-      render: (d) => formatEUR(d.totals.inCents),
-    },
-    {
-      label: es.comparar.rowOut,
-      better: 'low',
-      values: columns.map((c) => c.derived.totals.outCents),
-      render: (d) => formatEUR(d.totals.outCents),
-    },
-    {
-      label: es.comparar.rowUpfront,
-      better: 'low',
-      values: columns.map((c) => c.derived.upfront.cashCents),
-      render: (d) => formatEUR(d.upfront.cashCents),
-    },
-    {
-      label: es.comparar.rowSpend,
-      better: 'low',
-      values: columns.map((c) => c.derived.upfront.spendCents),
-      render: (d) => formatEUR(d.upfront.spendCents),
-    },
-    {
-      label: es.comparar.rowSavingsLeft,
-      better: 'high',
-      values: columns.map((c) => c.derived.savingsAfterUpfrontCents),
-      render: (d) => formatEUR(d.savingsAfterUpfrontCents),
-    },
-    {
-      label: es.comparar.rowMargin,
-      better: 'high',
-      values: columns.map((c) => c.derived.totals.balanceCents),
-      render: (d) => marginText(d),
-      tone: (d) => (d.verdict === 'falta' ? 'neg' : undefined),
-    },
-    {
-      label: es.comparar.rowMissing,
-      better: 'low',
-      values: columns.map((c) => c.derived.coverage.total - c.derived.coverage.withAmount),
-      render: (d) => String(d.coverage.total - d.coverage.withAmount),
-    },
-  ];
-
-  const bestIndex = (row: Row): number | null => {
-    if (row.better === 'none') return null;
-    const unique = new Set(row.values);
-    if (unique.size <= 1) return null;
-    let best = 0;
-    row.values.forEach((value, i) => {
-      const wins = row.better === 'high' ? value > row.values[best] : value < row.values[best];
-      if (wins) best = i;
-    });
-    return best;
-  };
-
-  const leader = bestIndex(rows[1]);
+  const template = `200px repeat(${columns.length}, minmax(150px, 1fr))`;
 
   return (
     <Panel
       label={`${es.comparar.panel} · ${scenarios.length}`}
       actions={
-        <Button variant="onInk" onClick={() => setOnlyDifferences(!onlyDifferences)}>
-          {onlyDifferences ? es.comparar.onlyDifferencesOn : es.comparar.onlyDifferences}
-        </Button>
+        <>
+          <span>
+            {es.comparar.against} {here.scenario.name}
+          </span>
+          <Button variant="onInk" onClick={() => setOnlyDifferences(!onlyDifferences)}>
+            {onlyDifferences ? es.comparar.onlyDifferencesOn : es.comparar.onlyDifferences}
+          </Button>
+        </>
       }
     >
       <div className="tblwrap">
-        <table className="cmp">
-          <thead>
-            <tr>
-              <th>&nbsp;</th>
-              {columns.map((column, i) => (
-                <th key={column.scenario.id} className={i === leader ? 'win' : undefined}>
-                  {column.scenario.name}
-                  <br />
-                  <span>{es.situacion[column.scenario.situacion]}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const best = bestIndex(row);
-              return (
-                <tr key={row.label}>
-                  <td>{row.label}</td>
-                  {columns.map((column, i) => {
-                    const tone = row.tone?.(column.derived);
-                    const className = [i === best ? 'best' : '', tone ?? ''].filter(Boolean).join(' ');
-                    return (
-                      <td key={column.scenario.id} className={className === '' ? undefined : className}>
-                        {row.render(column.derived)}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
+        <div className="cmp" style={{ gridTemplateColumns: template }}>
+          <div className="ch corner" />
+          {columns.map((column, i) => (
+            <div key={column.scenario.id} className={i === hereIndex ? 'ch here' : 'ch'}>
+              <b>{column.scenario.name}</b>
+              <em>{es.situacion[column.scenario.situacion]}</em>
+              <VerdictTag
+                verdict={column.derived.verdict}
+                shortfallCents={column.derived.shortfallCents}
+                compact
+              />
+            </div>
+          ))}
 
-            {same > 0 && (
-              <tr className="same">
-                <td colSpan={columns.length + 1}>
-                  {same} {es.comparar.sameRowPrefix}
-                  <button type="button" className="reveal" onClick={() => setShowSame(!showSame)}>
-                    {showSame ? es.comparar.hide : es.comparar.show}
-                  </button>
-                </td>
-              </tr>
-            )}
+          {ROWS.map((row) => {
+            const base = row.value(here.derived);
+            return (
+              <div key={row.label} style={{ display: 'contents' }}>
+                <div className="rl">{row.label}</div>
+                {columns.map((column, i) => {
+                  const value = row.value(column.derived);
+                  const isHere = i === hereIndex;
+                  const diff = value === null || base === null ? null : value - base;
+                  const good =
+                    diff === null || diff === 0 || row.better === 'none'
+                      ? ''
+                      : (row.better === 'high') === diff > 0
+                          ? 'good'
+                          : 'bad';
+                  return (
+                    <div
+                      key={column.scenario.id}
+                      className={isHere ? 'cc here' : 'cc'}
+                    >
+                      <span className="cv">{row.render(column.derived)}</span>
+                      <span className={`cd ${isHere ? 'here' : good}`}>
+                        {isHere
+                          ? es.comparar.here
+                          : diff === null
+                            ? es.common.none
+                            : diff === 0
+                              ? es.comparar.equal
+                              : row.money === true
+                                ? formatSignedEUR(diff)
+                                : (diff > 0 ? '+' : '') + String(diff)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
 
-            {same > 0 &&
-              showSame &&
-              identicalLabels(scenarios).map((label) => (
-                <tr key={label}>
-                  <td>{label}</td>
-                  {columns.map((column) => (
-                    <td key={column.scenario.id}>{sameAmount(column.scenario, label)}</td>
-                  ))}
-                </tr>
-              ))}
-          </tbody>
-        </table>
+          {same > 0 && (
+            <div className="same">
+              {same} {es.comparar.sameRowPrefix}
+              <button type="button" className="reveal" onClick={() => setShowSame(!showSame)}>
+                {showSame ? es.comparar.hide : es.comparar.show}
+              </button>
+            </div>
+          )}
+
+          {same > 0 &&
+            showSame &&
+            identicalLabels(scenarios).map((label) => (
+              <div key={label} style={{ display: 'contents' }}>
+                <div className="rl">{label}</div>
+                {columns.map((column, i) => (
+                  <div key={column.scenario.id} className={i === hereIndex ? 'cc here' : 'cc'}>
+                    <span className="cv">{sameAmount(column.scenario, label)}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+        </div>
       </div>
 
       <div className="pb">
-        <Insight>
+        <Insight label={es.comparar.insightLabel}>
           <SummarySentence columns={columns} />
         </Insight>
+        <p className="micro" style={{ marginTop: 10 }}>
+          {es.comparar.note}
+        </p>
       </div>
     </Panel>
   );
-}
-
-function verdictText(d: Derived): string {
-  if (d.verdict === 'falta') return es.verdict.faltaPrefix + formatEUR(d.shortfallCents);
-  if (d.verdict === 'justo') return es.verdict.justo;
-  return d.verdict === 'sindatos' ? es.verdict.sindatos : es.verdict.ok;
 }
 
 function marginText(d: Derived): string {
@@ -212,9 +229,7 @@ function marginText(d: Derived): string {
       : `${formatMonths(d.sixth.months)} ${es.comparar.monthsSuffix}`;
   }
   if (d.sixth.kind === 'buffer') {
-    return d.sixth.covered
-      ? es.comparar.bufferCovered
-      : formatEUR(d.sixth.savingsAfterUpfrontCents);
+    return d.sixth.covered ? es.comparar.bufferCovered : formatEUR(d.sixth.savingsAfterUpfrontCents);
   }
   return formatSignedEUR(d.sixth.balanceCents) + es.common.perMonth;
 }

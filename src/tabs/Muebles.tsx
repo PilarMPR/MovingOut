@@ -32,29 +32,39 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
 
   return (
     <div className="stack">
-      <div className="kgrid k4">
-        <KpiCard
-          label={es.muebles.kpiMinimum}
-          cents={totals.minimumCents}
-          tone="warn"
-          hero
-          sub={
-            <>
-              {es.muebles.kpiMinimumSub}
-              <br />
-              {totals.minimumCount} {es.common.of} {totals.total}{' '}
-              {plural(totals.total, es.muebles.article, es.muebles.articles)}
-            </>
-          }
-        />
-        <KpiCard
-          label={es.muebles.kpiWhole}
-          cents={totals.wholeListCents}
-          sub={es.muebles.kpiWholeSub}
-        />
+      {/* The one figure this tab exists for, and the control that defines it:
+          the minimum is only a minimum while the essentials filter is on. */}
+      <div className="mhero">
+        <div className="mh">
+          <div className="ml">{es.muebles.heroLabel}</div>
+          <div className="mv">{formatEUR(totals.minimumCents)}</div>
+          <div className="ms">
+            {onlyEssential ? es.muebles.heroSubEssential : es.muebles.heroSubAll} ·{' '}
+            {groups.length} {plural(groups.length, es.muebles.roomOne, es.muebles.rooms)}
+            {totals.missingPriceCount > 0 && (
+              <>
+                {' · '}
+                {totals.missingPriceCount}{' '}
+                {plural(
+                  totals.missingPriceCount,
+                  es.muebles.kpiMissingSubOne,
+                  es.muebles.kpiMissingSub,
+                )}
+              </>
+            )}
+          </div>
+        </div>
+        <Button variant="pill" on={onlyEssential} onClick={() => onOnlyEssential(!onlyEssential)}>
+          {onlyEssential ? es.muebles.onlyEssentialOn : es.muebles.onlyEssential}
+        </Button>
+      </div>
+
+      <div className="kgrid k3">
+        <KpiCard label={es.muebles.kpiWhole} cents={totals.wholeListCents} sub={es.muebles.kpiWholeSub} />
         <KpiCard
           label={es.muebles.kpiPaid}
           cents={totals.paidCents}
+          tone={totals.paidCents > 0 ? 'info' : 'plain'}
           sub={`${totals.paidCount} ${plural(totals.paidCount, es.muebles.kpiPaidSubOne, es.muebles.kpiPaidSub)}`}
         />
         <KpiCard
@@ -69,31 +79,29 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
         />
       </div>
 
-      <Panel
-        label={es.muebles.panel}
-        tone={totals.missingPriceCount > 0 ? 'amber' : 'green'}
-        actions={
-          <Button
-            variant={onlyEssential ? 'outline' : 'onInk'}
-            onClick={() => onOnlyEssential(!onlyEssential)}
-          >
-            {onlyEssential ? es.muebles.onlyEssentialOn : es.muebles.onlyEssential}
-          </Button>
-        }
-      >
-        {groups.length === 0 && <div className="empty-note">{es.muebles.empty}</div>}
+      {groups.length === 0 && (
+        <Panel label={es.muebles.panel} body={<div className="empty-note">{es.muebles.empty}</div>} />
+      )}
 
-        {groups.map((group) => (
-          <div key={group.room}>
-            <div className="room">
-              <span>{es.room[group.room]}</span>
-              <span className="cnt">
-                {group.pendingCount}{' '}
-                {plural(group.pendingCount, es.muebles.pendingOne, es.muebles.pending)} ·{' '}
-                {formatEUR(group.pendingCents)}
+      {groups.map((group) => {
+        const done = group.totalCents === 0 ? 0 : (group.paidCents / group.totalCents) * 100;
+        return (
+          <Panel
+            key={group.room}
+            label={es.room[group.room]}
+            tone={group.pendingCount === 0 ? 'green' : 'amber'}
+            actions={
+              <span>
+                {formatEUR(group.paidCents)} / {formatEUR(group.totalCents)}
                 {group.missingPriceCount > 0 && ` · +${group.missingPriceCount}`}
               </span>
+            }
+          >
+            {/* Flush under the header: how much of this room is already bought. */}
+            <div className="rprog">
+              <i style={{ width: `${done}%` }} />
             </div>
+
             <div className="tblwrap">
               <table className="tbl-rooms">
                 <tbody>
@@ -112,10 +120,11 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
                           options={PRIORITIES}
                           labels={es.priority}
                           ariaLabel={es.costes.colPriority}
+                          variant={item.priority === 'esencial' ? 'strong' : 'plain'}
                           onChange={(priority) => store.patchEntry(item.id, { priority })}
                         />
                       </td>
-                      <td style={{ width: 108 }}>
+                      <td style={{ width: 116 }}>
                         <StatusSelect
                           value={item.status}
                           options={FURNITURE_STATUSES}
@@ -147,54 +156,57 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
                         />
                       </td>
                       <td className="r amount-col">
-                        <EditableAmount
-                          cents={item.amountCents}
-                          hasAmount={item.hasAmount}
-                          emptyLabel={es.costes.empty}
-                          ariaLabel={es.costes.colAmount}
-                          onCommit={(cents) => store.reviseAmount(item.id, cents)}
-                        />
+                        <div className="amount">
+                          <EditableAmount
+                            cents={item.amountCents}
+                            hasAmount={item.hasAmount}
+                            emptyLabel={es.costes.empty}
+                            ariaLabel={es.costes.colAmount}
+                            onCommit={(cents) => store.reviseAmount(item.id, cents)}
+                          />
+                          <span className="cur">{es.common.euro}</span>
+                        </div>
                       </td>
                       <td className="note-col">
-                        <EditableText
-                          value={item.note ?? ''}
-                          ariaLabel={es.costes.colNote}
-                          placeholder={es.costes.notePlaceholder}
-                          onChange={(note) => store.patchEntry(item.id, { note })}
-                        />
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="caret"
-                          aria-label={es.costes.delete}
-                          onClick={() => store.removeEntry(item.id)}
-                        >
-                          ×
-                        </button>
+                        <div className="rowend">
+                          <EditableText
+                            value={item.note ?? ''}
+                            ariaLabel={es.costes.colNote}
+                            placeholder={es.costes.notePlaceholder}
+                            onChange={(note) => store.patchEntry(item.id, { note })}
+                          />
+                          <button
+                            type="button"
+                            className="hist off"
+                            aria-label={es.costes.delete}
+                            onClick={() => store.removeEntry(item.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          </div>
-        ))}
+          </Panel>
+        );
+      })}
 
-        <AddRow
-          label={es.muebles.add}
-          onClick={() =>
-            store.addEntry({
-              label: es.muebles.newLabel,
-              category: 'mobiliario',
-              frequency: 'unico',
-              status: 'pendiente',
-              priority: 'esencial',
-              room: 'otros',
-            })
-          }
-        />
-      </Panel>
+      <AddRow
+        label={es.muebles.add}
+        onClick={() =>
+          store.addEntry({
+            label: es.muebles.newLabel,
+            category: 'mobiliario',
+            frequency: 'unico',
+            status: 'pendiente',
+            priority: 'esencial',
+            room: 'otros',
+          })
+        }
+      />
     </div>
   );
 }

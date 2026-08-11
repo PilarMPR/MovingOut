@@ -3,11 +3,11 @@ import { AddRow } from '../components/AddRow';
 import { EditableAmount, EditableText } from '../components/EditableCell';
 import { Chip, FilterBar, FilterLabel } from '../components/FilterBar';
 import { Panel } from '../components/Panel';
-import { Select, StatusSelect } from '../components/Select';
+import { DirectionSelect, Select, StatusSelect } from '../components/Select';
 import { es, plural } from '../i18n/es';
-import { divisorLabel, toMonthly } from '../lib/frequency';
+import { toMonthly } from '../lib/frequency';
 import { delta, formatDate } from '../lib/history';
-import { formatEUR, formatPercent, formatSignedEUR, formatSignedPercent } from '../lib/money';
+import { formatEUR, formatSignedEUR, formatSignedPercent } from '../lib/money';
 import type { Store } from '../state/store';
 import {
   CATEGORIES,
@@ -51,25 +51,50 @@ export function applyFilters(entries: Entry[], f: Filters): Entry[] {
   });
 }
 
+export function isFiltered(f: Filters): boolean {
+  return (
+    f.direction !== 'all' ||
+    f.priority !== 'all' ||
+    f.status !== 'all' ||
+    f.category !== 'all' ||
+    f.missingOnly
+  );
+}
+
 /**
  * The monthly-equivalent cell. Four different answers, and only one of them is
  * a number — which is the point: `pausado` and `único` are decisions, and
  * printing a monthly figure for either would be a lie.
+ *
+ * The line under it says which real frequency the figure was normalised from,
+ * because a bimonthly bill divided by two looks exactly like a monthly one.
  */
 function MonthlyEquivalent({ entry }: { entry: Entry }) {
   if (!entry.hasAmount) return <span className="eq none">{es.costes.empty}</span>;
   if (entry.status === 'pausado') return <span className="eq none">{es.costes.noCount}</span>;
 
   const monthly = toMonthly(entry.amountCents, entry.frequency);
-  if (monthly === null) return <span className="eq none">{es.costes.oneOff}</span>;
+  if (monthly === null) {
+    return (
+      <>
+        <span className="eq oneoff">{formatEUR(entry.amountCents)}</span>
+        <span className="eqnote">{es.costes.eqOneOff}</span>
+      </>
+    );
+  }
 
-  const divisor = divisorLabel(entry.frequency);
   const incoming = entry.direction === 'entrada';
   return (
-    <span className={incoming ? 'eq in' : 'eq'}>
-      {divisor !== '' && <span className="div">{divisor}</span>}
-      {incoming ? formatSignedEUR(monthly) : formatEUR(monthly)}
-    </span>
+    <>
+      <span className={incoming ? 'eq in' : 'eq'}>
+        {incoming ? formatSignedEUR(monthly) : formatEUR(monthly)}
+      </span>
+      {entry.frequency !== 'mensual' && (
+        <span className="eqnote">
+          {es.costes.eqFrom} {es.frequency[entry.frequency]}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -85,36 +110,42 @@ function Row({ entry, store, open, onToggle }: RowProps) {
   const revisions = entry.history.length;
   const d = delta(entry);
 
+  // The counter is also the drawer's handle, and its tint is the direction of
+  // the last revision — so the row keeps the at-a-glance "this moved" signal
+  // that a bare count cannot carry, without spending a column on it.
+  const histClass = [
+    'hist',
+    revisions < 2 ? 'off' : '',
+    open ? 'on' : '',
+    !open && d.vsPreviousCents !== null && d.vsPreviousCents > 0 ? 'up' : '',
+    !open && d.vsPreviousCents !== null && d.vsPreviousCents < 0 ? 'down' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const rowClass = [entry.status === 'pausado' ? 'paused' : '', incoming ? 'in' : '']
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <>
-      <tr className={entry.status === 'pausado' ? 'paused' : undefined}>
+      <tr className={rowClass === '' ? undefined : rowClass}>
         <td>
-          {revisions > 1 && (
-            <button
-              type="button"
-              className="caret"
-              aria-label={open ? es.costes.historyClose : es.costes.historyOpen}
-              aria-expanded={open}
-              onClick={onToggle}
-            >
-              {open ? '▾' : '▸'}
-            </button>
-          )}
+          <div className="concepto">
+            <span className={incoming ? 'ddot in' : 'ddot'} />
+            <EditableText
+              value={entry.label}
+              ariaLabel={es.costes.colConcept}
+              onChange={(label) => store.patchEntry(entry.id, { label })}
+            />
+          </div>
         </td>
         <td>
-          <EditableText
-            value={entry.label}
-            ariaLabel={es.costes.colConcept}
-            onChange={(label) => store.patchEntry(entry.id, { label })}
-          />
-        </td>
-        <td>
-          <Select
+          <DirectionSelect
             value={entry.direction}
             options={DIRECTIONS}
             labels={es.direction}
             ariaLabel={es.costes.colType}
-            incoming={incoming}
             onChange={(direction) => store.patchEntry(entry.id, { direction })}
           />
         </td>
@@ -133,6 +164,7 @@ function Row({ entry, store, open, onToggle }: RowProps) {
             options={FREQUENCIES}
             labels={es.frequency}
             ariaLabel={es.costes.colFrequency}
+            variant={entry.frequency === 'unico' ? 'oneoff' : 'plain'}
             onChange={(frequency) => store.patchEntry(entry.id, { frequency })}
           />
         </td>
@@ -142,6 +174,7 @@ function Row({ entry, store, open, onToggle }: RowProps) {
             options={PRIORITIES}
             labels={es.priority}
             ariaLabel={es.costes.colPriority}
+            variant={entry.priority === 'esencial' ? 'strong' : 'plain'}
             onChange={(priority) => store.patchEntry(entry.id, { priority })}
           />
         </td>
@@ -154,7 +187,7 @@ function Row({ entry, store, open, onToggle }: RowProps) {
             onChange={(status) => store.patchEntry(entry.id, { status })}
           />
         </td>
-        <td className="r">
+        <td>
           <div className="amount">
             <EditableAmount
               cents={entry.amountCents}
@@ -163,39 +196,46 @@ function Row({ entry, store, open, onToggle }: RowProps) {
               ariaLabel={es.costes.colAmount}
               onCommit={(cents) => store.reviseAmount(entry.id, cents)}
             />
-            {d.vsOriginalPercent !== null && d.vsOriginalPercent !== 0 && (
-              <span className={d.vsOriginalPercent > 0 ? 'delta up' : 'delta down'}>
-                {(d.vsOriginalPercent > 0 ? '▲ ' : '▼ ') + formatPercent(Math.abs(d.vsOriginalPercent))}
-              </span>
-            )}
+            <span className="cur">{es.common.euro}</span>
           </div>
         </td>
         <td className="r">
           <MonthlyEquivalent entry={entry} />
         </td>
         <td>
-          <EditableText
-            value={entry.note ?? ''}
-            ariaLabel={es.costes.colNote}
-            placeholder={es.costes.notePlaceholder}
-            onChange={(note) => store.patchEntry(entry.id, { note })}
-          />
-        </td>
-        <td>
-          <button
-            type="button"
-            className="caret"
-            aria-label={es.costes.delete}
-            onClick={() => store.removeEntry(entry.id)}
-          >
-            ×
-          </button>
+          <div className="rowend">
+            <EditableText
+              value={entry.note ?? ''}
+              ariaLabel={es.costes.colNote}
+              placeholder={es.costes.notePlaceholder}
+              onChange={(note) => store.patchEntry(entry.id, { note })}
+            />
+            <button
+              type="button"
+              className={histClass}
+              disabled={revisions < 2}
+              aria-label={open ? es.costes.historyClose : es.costes.historyOpen}
+              aria-expanded={open}
+              title={es.costes.historyTitle}
+              onClick={onToggle}
+            >
+              {revisions < 2 ? '·' : revisions}
+            </button>
+            <button
+              type="button"
+              className="hist off"
+              aria-label={es.costes.delete}
+              onClick={() => store.removeEntry(entry.id)}
+            >
+              ×
+            </button>
+          </div>
         </td>
       </tr>
 
       {open && (
         <tr className="drawer">
-          <td colSpan={11}>
+          <td colSpan={9}>
             <div className="drawer-in">
               <div className="dh">
                 {es.costes.historyTitle} · {revisions} {es.costes.historyRevisions}
@@ -239,11 +279,14 @@ interface Props {
 
 export function Costes({ store, filters, onFilters }: Props) {
   const [open, setOpen] = useState<string | null>(null);
-  const { costes, coverage, totals } = store.derived;
+  const { costes, coverage, totals, verdict } = store.derived;
   const rows = applyFilters(costes, filters);
   const missing = coverage.total - coverage.withAmount;
 
   const set = (patch: Partial<Filters>) => onFilters({ ...filters, ...patch });
+
+  const balanceTone =
+    verdict === 'falta' ? 'neg' : verdict === 'justo' ? 'warn' : verdict === 'ok' ? 'pos' : 'quiet';
 
   return (
     <Panel
@@ -324,7 +367,6 @@ export function Costes({ store, filters, onFilters }: Props) {
         <table className="tbl-costes">
           <thead>
             <tr>
-              <th style={{ width: 20 }} />
               <th>{es.costes.colConcept}</th>
               <th>{es.costes.colType}</th>
               <th>{es.costes.colCategory}</th>
@@ -334,7 +376,6 @@ export function Costes({ store, filters, onFilters }: Props) {
               <th className="r">{es.costes.colAmount}</th>
               <th className="r">{es.costes.colMonthly}</th>
               <th>{es.costes.colNote}</th>
-              <th style={{ width: 20 }} />
             </tr>
           </thead>
           <tbody>
@@ -350,28 +391,40 @@ export function Costes({ store, filters, onFilters }: Props) {
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={9}>
                   <div className="empty-note">{es.costes.emptyList}</div>
                 </td>
               </tr>
             )}
 
+            {/* The three figures the grid exists to produce, at the foot of the
+                grid that produced them — normalised to the month, always. */}
             <tr className="tot">
-              <td colSpan={7}>{es.costes.totalRow}</td>
-              <td className="r">
-                {rows.length} {plural(rows.length, es.costes.totalConcept, es.costes.totalConcepts)}
+              <td colSpan={9}>
+                <div className="totstrip">
+                  <span>
+                    {es.costes.totalRow} ·{' '}
+                    {isFiltered(filters) ? es.costes.totalFiltered : es.costes.totalAll} ·{' '}
+                    {rows.length}{' '}
+                    {plural(rows.length, es.costes.totalConcept, es.costes.totalConcepts)}
+                  </span>
+                  <div className="tgap" />
+                  <div className="tcol">
+                    {es.costes.filterIn}
+                    <span className="tv pos">{formatEUR(totals.inCents)}</span>
+                  </div>
+                  <div className="tcol">
+                    {es.costes.filterOut}
+                    <span className="tv neg">{formatEUR(totals.outCents)}</span>
+                  </div>
+                  <div className="tcol">
+                    {es.costes.totalBalance}
+                    <span className={`tv ${balanceTone}`}>
+                      {formatSignedEUR(totals.balanceCents)}
+                    </span>
+                  </div>
+                </div>
               </td>
-              <td className="r">
-                <span className="eq in">{formatSignedEUR(totals.inCents)}</span>{' '}
-                <span className="eq out">{formatSignedEUR(-totals.outCents)}</span>
-              </td>
-              <td>
-                <span className={totals.balanceCents >= 0 ? 'eq in' : 'eq out'}>
-                  = {formatSignedEUR(totals.balanceCents)}
-                  {es.common.perMonth}
-                </span>
-              </td>
-              <td />
             </tr>
           </tbody>
         </table>

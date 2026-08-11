@@ -2,11 +2,11 @@
 
 The resolved answer to [`DESIGN-BRIEF.md`](DESIGN-BRIEF.md). The brief asked the questions; this file holds the decisions, and the build is expected to match it.
 
-> **Status — 2026-08-09: built.** All eleven steps of §8 have landed. The token block below is `src/styles/tokens.css`, and every screen exists. Where the running app and this file disagree, that is a bug in one of them — say which.
+> **Status — 2026-08-11: re-skinned to the `Independencia` design.** The Claude Design project *Moving out finances app* (`Independencia.dc.html`) replaced the palette, the type stack and several screen layouts. §1–§4 below are the new system; §5–§7 still describe the screens correctly. What changed, and why each change is a reversal of something this file used to insist on, is in `docs/DEVLOG.md` — **2026-08-11**.
 >
-> Three things the build changed, all recorded in `docs/DEVLOG.md`: the token block gained a derived group (text on ink, ink washes, semantic borders) so *no* raw hex lives outside `:root`; the display face is `'Archivo Variable'` with `font-stretch:125%`, which is how `@fontsource-variable/archivo` exposes Expanded; and the marginal-state fragility line is phrased per 100 € of surprise rather than against an invented shock figure, so no real-world price is hardcoded.
-
-A working prototype of everything below lives at [`mockups/movingout.html`](mockups/movingout.html) — a single self-contained file, no build step, open it in a browser. It renders every screen, the component sheet and all three verdict states. **When this file and the prototype disagree, this file wins**; the prototype is a picture, not a source of truth.
+> Two rules were deliberately overturned: there is now a `--blue` informational hue (§1), and the accent is indigo rather than mulberry (§2). One rule was deliberately kept against the design: **light mode only**. The design ships three palettes — Papel, Plano, Noche — and only **Papel** is built. The other two are recorded in §2 as unshipped variants.
+>
+> The live component sheet is now the **Sistema** tab in the app itself, rendered against the real tokens. Prefer it over any picture: `docs/mockups/movingout.html` is the *previous* design and is kept only as a record of it.
 
 ---
 
@@ -16,90 +16,97 @@ Colour has exactly two jobs here, and they never overlap.
 
 | | carries | used for |
 |---|---|---|
-| **Semantic** — green · red · amber | **meaning** | sign of the balance, state of a row, the verdict |
-| **Accent** — mulberry | **interaction** | focus ring, active tab, primary button, links, add-row |
+| **Semantic** — green · red · amber · blue | **meaning** | sign of the balance, state of a row, the verdict |
+| **Accent** — indigo | **interaction** | focus ring, active tab, primary button, links, add-row |
 
-The brief asks that the user read the answer from colour before reading a digit. That only works if the answer is the *only* thing coloured — so categories get no hue of their own, breakdown bars are one warm brown at descending opacity, and headings are never tinted.
+The brief asks that the user read the answer from colour before reading a digit. That only works if the answer is the *only* thing coloured — so categories get no hue of their own, breakdown bars are one accent tone at descending opacity, and headings are never tinted.
 
 **If a number renders in the accent, that is a bug.** The one legitimate exception is a value mid-edit, and even there the ring carries the state, not the text.
 
 Two consequences worth stating because they are easy to undo later:
 
 - **A category never gets a colour.** The moment `vivienda` is blue and `ocio` is purple, green stops meaning "good".
-- **`pagado` and `pausado` get no hue at all.** Neither is good or bad — one is settled, one is deliberately excluded — so both use `--stone`, distinguished by weight, a `✓`, and the 50 % dim on a paused row. This is why there is no `--info` token.
+- **`pausado` gets no hue at all.** It is a deliberate absence rather than a fact, so it takes the neutral pill and the row dims to 50 %. Colouring it would turn an exclusion into a judgement.
+
+### `--blue` — the fourth semantic, added 2026-08-11
+
+This file previously said there is no `--info` token, and that `pagado` shares `--stone` with `pausado`. The `Independencia` design overturns that, and it is right to:
+
+> Three facts in this app are neither good nor bad, and lumping them in with "no colour" makes them look like nothing at all: an amount already **`pagado`**, money that is **refundable**, and a **`único`** payment that has no monthly equivalent to report.
+
+Each of those is a *positive statement of a fact* — settled, coming back, due once — as against `pausado`, which is the absence of one. Green would read as approval, amber as caution; both would be wrong. `--blue` is the informational tone, and it is semantic, not decorative: **it still never colours a category, and it still never colours a heading.**
+
+The rule that replaces the old one: **four semantics carry meaning, one accent carries interaction, and `pausado` carries no colour because it is not a meaning.**
 
 ---
 
 ## 2. Tokens
 
-Warm plaster ground, warm near-black ink, mulberry accent, earth semantics. Light mode only — the product commits to one look; dark mode is not planned and is not a gap.
+Warm paper ground, near-black ink, indigo accent, four semantics. **Light mode only** — the product commits to one look.
 
 Every colour in the app resolves through a variable in this one block. **No raw hex exists anywhere else in `src/`**, and Tailwind consumes the variables rather than owning colours.
 
-### `src/styles/tokens.css`
+The authoritative copy is `src/styles/tokens.css`; what follows is its shape, not a second source of truth. The **Sistema** tab renders these swatches from the live variables, which is the only way a token sheet stays honest.
 
 ```css
 :root{
-  /* ── ground — warm plaster, the wall of the flat, not a sheet of paper ── */
-  --bg:#EBE4D9;      --card:#F8F4EC;   --sunk:#DFD6C6;   --raised:#FFFDF8;
-  --ink:#1E1813;     --ink-2:#2A231C;  --ink-3:#3A3128;
-  --text:#1F1913;    --muted:#6E6357;  --faint:#A79B8B;
-  --border:rgba(31,25,19,.15);   --border-ink:rgba(248,244,236,.10);
+  /* ── ground — warm paper, near-black ink ── */
+  --bg:#EFEDE7;      --card:#FFFFFF;   --sunk:#F7F5F1;   --raised:#FFFFFF;
+  --ink:#17191C;     --ink-2:#24272C;  --ink-3:#31353B;
+  --text:#17191C;    --muted:#7C7970;  --faint:#A3A099;
+  --border:#DFDCD4;  --border-2:#CBC7BD;
 
   /* ── accent — interaction, never meaning ── */
-  --accent:#7B3A87;  --accent-l:#C88ED6; --accent-t:#F2E6F4;
+  --accent:#4438CA;  --accent-t:#EAE8FB;  --accent-b:#CFCAF4;  --accent-l:#A9A1EE;
 
   /* ── semantic — meaning, never decoration ── */
-  --green:#3D6B33;   --green-t:#E6EDDA;  --green-f:#6B9243;
-  --red:#B23A25;     --red-t:#F7E4DC;    --red-f:#CE5A3E;
-  --amber:#8A6212;   --amber-t:#F6E8CB;  --amber-f:#C9901A;
-  --stone:#6E6357;   --stone-t:#E7DFD1;
-
-  /* ── form ── */
-  --r-sm:4px; --r:8px; --r-lg:12px;
-  --sh-1:0 1px 2px rgba(28,22,17,.08);
-  --sh-2:0 4px 14px rgba(28,22,17,.12);
-  --sh-3:0 22px 55px rgba(28,22,17,.30);
+  --green:#157F4C;   --green-t:#E2F1E9;  --green-b:#B9DCCA;
+  --red:#C0271A;     --red-t:#FAE6E3;    --red-b:#EFC0B9;
+  --amber:#9E6400;   --amber-t:#F8EEDC;  --amber-b:#E7D3AE;
+  --blue:#0E7490;    --blue-t:#E1F0F4;   --blue-b:#B7D9E2;
 
   /* ── type ── */
-  --display:'Archivo Expanded','Archivo',ui-sans-serif,system-ui,sans-serif;
-  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
-  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --display:'Archivo Variable','Archivo',ui-sans-serif,system-ui,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  --body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
 ```
 
-### `tailwind.config.ts`
+Plus three derived groups the build needs and the design writes inline: the **on-ink ramp** (`--on-ink`, and the same off-white at .72 / .60 / .45 / .16 / .09), the **ink washes** (`--hover`, `--rule`, `--track`, `--wash`, `--dash`, `--in-row`), and `--on-accent`. They exist so the *no raw hex outside `:root`* rule holds without exception. See the file.
 
-```ts
-theme:{ extend:{
-  colors:{ bg:'var(--bg)', card:'var(--card)', sunk:'var(--sunk)', ink:'var(--ink)',
-           accent:'var(--accent)', green:'var(--green)', red:'var(--red)',
-           amber:'var(--amber)', stone:'var(--stone)' },
-  fontFamily:{ display:'var(--display)', mono:'var(--mono)', body:'var(--body)' },
-}}
-```
+### The two unshipped palettes
+
+The design carries three, switchable by a `data-pal` attribute. Only **Papel** is built. Recorded here so the decision is visible rather than lost:
+
+| | ground | accent | note |
+|---|---|---|---|
+| **Papel** | `#EFEDE7` warm paper | `#4438CA` indigo | **ships** |
+| Plano | `#ECEFF2` cool grey | `#0E7490` teal | not built — accent collides with `--blue` |
+| Noche | `#111317` dark | `#8E86FF` | not built — see below |
+
+**Noche is not a gap.** Shipping it costs a `Settings` field, a storage version bump with an `ensureShape` backfill (IND003), and a contrast pass over all eight screens; and the product's whole argument is that it commits to one look. If it is ever wanted, that is the price, and it should be paid deliberately.
 
 ### Token roles
 
 | token | role |
 |---|---|
-| `--bg` | app ground |
-| `--card` | panel body, KPI body |
-| `--sunk` | filter bars, table heads, totals row, insight box, drawer rows |
-| `--raised` | focused input, hero KPI. **Warm white, not `#FFF`** — a true white input on plaster reads as a hole, not a lift |
-| `--ink` / `--ink-2` | panel headers and app header / tab strip |
-| `--ink-3` | breakdown bar fills, at descending opacity |
-| `--muted` | labels, secondary numbers. 5.3:1 on `--card` |
-| `--faint` | **only** empty amounts and the `÷2` divisor annotation |
-| `--*-t` | tint — pill and select fill |
-| `--*-f` | fill — bars and status dots **only**, never text; they do not pass at 8 px |
+| `--bg` | app ground, and the fill of the **active tab** — the tab is a notch cut out of the header |
+| `--card` | panel body, KPI body, table rows |
+| `--sunk` | filter bars, totals strip, drawer rows, bar tracks, the neutral pill |
+| `--ink` / `--ink-2` | app header and panel header bars |
+| `--ink-3` | progress fills where no semantic applies |
+| `--muted` | labels, secondary numbers |
+| `--faint` | **only** empty amounts, the `÷2` annotation, and the `≡ BIMESTRAL` note |
+| `--*-t` | tint — pill, select and banner fill |
+| `--*-b` | border — the matching hairline for each tint |
+| `--in-row` | the row tint on an `entrada`. Green at almost nothing, so the row reads as a *kind*, not a verdict |
 
 ### Rules for changing it
 
-- **Swapping the palette is nine lines.** If mulberry is wrong, `#8E3050` (wine — warmer, but check it against the brick red at 8 px) or `#5B4BA8` (warm indigo — cooler, safest clearance from every semantic).
-- **Do not move the accent into rust, ochre or olive.** On this ground they are indistinguishable from red, amber and green, and the accent starts looking like a verdict.
-- **Green, red and amber must survive at 8 px** — they appear as pill text and as `<select>` text. Test at that size before committing a change, on `--card` *and* on their own tint.
-- **Warming the ground moved three things**, and un-warming any one of them is what would make this look accidental: pure white left the palette, the semantics rotated to earth, and the ink went warm. They travel together.
+- **Swapping the palette is this block.** Nothing else.
+- **Do not move the accent into teal, rust, ochre or olive.** Against these four semantics they read as `--blue`, `--red`, `--amber` and `--green`, and the accent starts looking like a verdict. Indigo is chosen for its clearance from all four.
+- **All four semantics must survive at 8 px** — they appear as pill text and as `<select>` text. Test at that size, on `--card` *and* on their own tint, before committing a change.
+- **`--blue` and `--accent` must stay clearly apart.** They are the two cool hues, and they mean opposite kinds of thing: one is a fact, one is a control. If a redesign narrows the gap, move the accent, not the blue.
 
 ---
 
@@ -109,9 +116,11 @@ Three faces, three fixed roles. No fourth role, and no face used outside its rol
 
 | role | face | used for |
 |---|---|---|
-| **display** | Archivo Expanded 800 | KPI values and screen titles **only**. `font-variant-numeric: tabular-nums` always. Never below 18 px |
-| **mono** | IBM Plex Mono | every label, column head, table input, tag, button, amount, micro-label. Carries the personality |
-| **body** | IBM Plex Sans | prose, notes, the insight line, row labels. 12–13 px in the app |
+| **display** | Archivo 600, normal width | KPI values and screen titles **only**. `font-variant-numeric: tabular-nums` always. Never below 15 px |
+| **mono** | JetBrains Mono | every label, column head, table input, tag, button, amount, micro-label. Carries the personality |
+| **body** | Public Sans | prose, notes, the insight line, row labels. 12–13 px in the app |
+
+The display face was Archivo *Expanded* (the `wdth` axis at 125 %, weight 800). The `Independencia` design uses Archivo at its **normal width and weight 600**, so `main.tsx` imports `@fontsource-variable/archivo/wght.css` rather than `wdth.css`. Expanded 800 fought the mono at KPI sizes; 600 normal sits under it.
 
 **Install the faces as local packages** (`@fontsource/...`), not as CDN links. The app is a PWA that must work offline on the first launch after install, and a font that fails to load silently changes the density of every screen.
 
@@ -123,26 +132,30 @@ Deliberately dense on desktop, per the Command Center grammar: 12–13 px body, 
 
 ## 4. Components
 
-Ten components carry every screen. They live in `src/components/`, and **no tab reaches past them for a colour**.
+Twelve components carry every screen. They live in `src/components/`, and **no tab reaches past them for a colour**. The **Sistema** tab renders this table as running code.
 
 | component | notes |
 |---|---|
-| `Panel` | rounded card, light body, ink header bar. Micro-label mono 9 px / 0.2em / uppercase, plus a state dot. Actions right-aligned **in the same bar** — there is no second toolbar |
-| `KpiCard` | label (mono, tiny) → value (display, 27 px; 38 px for hero) → sub-line (mono, tiny, muted). 1 px gutters read as hairlines |
-| `Tag` | mono 8 px, uppercase, pill radius, tinted background + matching border + matching text. Verdicts and states |
-| `Button` | mono 9 px uppercase. Variants: accent-filled, accent-outline, ghost, on-ink |
+| `Panel` | rounded card, white body, 30 px ink header bar. Micro-label mono 9 px / 0.2em / uppercase, plus a state dot. Actions right-aligned **in the same bar** — there is no second toolbar |
+| `KpiCard` | label (mono, tiny) → value (display, 30 px; 44 px for hero) → sub-line (mono, tiny, faint). 1 px gutters read as hairlines. `hero` and `wide` span two columns of the 5-wide grid |
+| `Tag` | mono 8 px, uppercase, pill radius, tinted background + matching border + matching text. Tones: green · red · amber · **blue** · neutral · accent |
+| `VerdictTag` | the verdict's wording *and* its colour, in one place. The header, Resumen and Comparar all print it; three copies would be three chances to disagree about the answer |
+| `Button` | mono 9 px uppercase. Variants: accent-filled, accent-outline, ghost, on-ink, **pill** (the Muebles toggle: filled when engaged) |
 | `AddRow` | dashed, full width, at the foot of the table. **Not a floating action button** |
-| `EditableCell` | transparent input in table mono. Rest / hover (border + raised) / focus (accent border + 2 px glow) / empty (dashed, faint `— —`). Focus strips the currency format and leaves the raw number. Typing writes straight to state — **no save button** |
-| `StatusSelect` | a `<select>` whose colour is driven by its selected value: activo → green, pendiente → amber, pagado → stone + `✓`, pausado → stone outline (and the row dims to 50 %) |
-| `BreakdownBar` | label · track · fill · amount. One tone (`--ink-3`) at descending opacity |
+| `EditableCell` | transparent input in table mono. Rest / hover (border) / focus (accent border + 3 px ring on white) / empty (dashed, faint `— —` on `--sunk`). Focus strips the currency format and leaves the raw number. Typing writes straight to state — **no save button** |
+| `StatusSelect` | a pill `<select>` whose colour is driven by its selected value: activo → green, pendiente → amber, pagado → **blue**, pausado → neutral (and the row dims to 50 %) |
+| `DirectionSelect` | the same pill, green in / red out. This is why the amount itself stays black: the sign lives on the row, not on the number |
+| `BreakdownBar` | label · dotted leader · amount · share, and a 7 px bar under it. One accent tone at descending opacity |
 | `FilterBar` | sits **inside** the panel, between the ink header and the table body. Chips, not a dropdown row |
-| `Insight` | `--sunk` box with a 3 px accent left border. One plain-language sentence |
+| `Insight` | full-width banner, tinted by the sign of the answer, with a `LA RESPUESTA` micro-label down the left. One plain-language sentence |
 
 ---
 
 ## 5. Screens
 
-Tabs: **Resumen · Costes · Muebles · Proyectos · Historial · Ajustes**, plus **Comparar**, which the brief did not specify and §5.7 proposes.
+Tabs: **Resumen · Costes · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema** (§5.8), which sits apart on the right of the tab row because it is not a product screen.
+
+The tab row lives in the ink header, under the identity bar. The active tab is filled with `--bg` and squared into the page — a notch cut out of the header, not an underline. **The verdict pill rides in the identity bar**, to the right: it is true on every tab, so it should not be something you navigate back to Resumen to read.
 
 ### 5.1 Resumen
 
@@ -158,21 +171,32 @@ Header (scenario select + `situación`) → verdict pill → KPI row of six → 
 
 The label changes; the slot does not move.
 
-The **max-rent guideline** is an amber strip *below* the KPI row that states its own assumption inline (*"32 % sobre 730 €/mes"*). It never touches an input, never blocks a save, and is never red.
+The grid is **five columns wide over two rows**, and it is exactly full: `BALANCE` is a hero spanning two, `DESVIACIÓN` is `wide` spanning two, and the other six take one each.
 
-The **upfront ledger** separates `dinero al entrar` from `gasto real` as two totals, with the fianza row carrying a green *Devolvible* pill. There is no combined "moving costs" figure anywhere in the app.
+The **max-rent guideline** is now KPI 7 rather than an amber strip, rendered in `--quiet` — the least loud number on the screen — with its assumption on the sub-line (*"Regla del 32 % sobre 730 €/mes · Es una referencia, no un límite."*). It never touches an input, never blocks a save, and is never red. **Making it a KPI does not make it a result**; the tone is what says so.
+
+The **upfront ledger** separates `dinero al entrar` from `gasto real` as two totals **side by side in their own boxes**, because the gap between them is exactly the fianza. The fianza row carries a blue *Devolvible* pill, and a sentence under the boxes says the deposit is money you need to have, not money you spend. There is no combined "moving costs" figure anywhere in the app.
+
+The **insight line** is a full-width banner tinted by the sign of the answer — green, amber, red, or a neutral wash for `sindatos`. It is the last thing on the screen and it states the answer in one sentence.
 
 ### 5.2 Costes
 
-One dense editable grid holding **both** entradas and salidas, filters inside the panel, a totals row, a dashed add-row.
+One dense editable grid of **nine columns** holding **both** entradas and salidas, filters inside the panel, a totals strip, a dashed add-row.
 
-- **Frequency vs monthly equivalent.** `IMPORTE` holds the number the user knows (*"58 € cada dos meses"*); `EQUIV. MENSUAL` holds the number they decide with. A faint mono divisor sits between them — `÷2`, `÷12`. That one annotation removes all ambiguity about which column was normalised, at almost no visual cost.
-- **Price history without a modal.** A row with more than one revision grows a delta chip beside its amount (`▲ 14 %`). The caret expands a drawer row *underneath, inside the same table* — date, amount, change vs previous and vs original.
+`CONCEPTO · TIPO · CATEGORÍA · FRECUENCIA · PRIORIDAD · ESTADO · IMPORTE · EQUIV. MENSUAL · NOTA`
+
+- **`CONCEPTO` is sticky.** At 1080 px the grid scrolls horizontally, and a number under the cursor has to keep the name it belongs to.
+- **An `entrada` tints its whole row** (`--in-row`) and carries a green dot before its label. Direction is a *kind* of row, so it colours the row; the amount stays black.
+- **Frequency vs monthly equivalent.** `IMPORTE` holds the number the user knows (*"58 € cada dos meses"*); `EQUIV. MENSUAL` holds the number they decide with, with `≡ BIMESTRAL` under it. That one annotation removes all ambiguity about which column was normalised, at almost no visual cost.
+- **Price history without a modal.** A row with more than one revision grows a **counter button** at the end of the row: `3`, tinted red or green by the direction of the *last* revision. It is also the drawer's handle — clicking expands a row *underneath, inside the same table*, with date, amount, change vs previous and vs original. The counter replaced a `▲ 14 %` chip beside the amount, which the nine-column grid has no room for; the tint is what carries the at-a-glance signal instead.
 - **`pausado` stays visible.** Row dims to 50 %, equivalent reads `no cuenta` instead of a number. Removing it would lose the decision.
+- **The totals strip** prints `ENTRADAS · SALIDAS · BALANCE`, all normalised to the month, and says whether it is showing the whole scenario or a filtered subset. The balance takes the **verdict's** colour, not the raw sign — `+8 €` is positive and still not a yes.
 
 ### 5.3 Muebles
 
-Grouped by room, `pendiente` / `pagado`. The **"sólo esenciales"** filter is promoted out of the chip row into the panel header, because it is the control that answers the question. It gets its own KPI: `MÍNIMO PARA ENTRAR`, alongside a `SIN PRECIO` count — the minimum is only as true as its coverage.
+A **hero card** carries the one figure this tab exists for — `MÍNIMO REAL PARA ENTRAR A VIVIR` — with the **"sólo esenciales"** pill toggle beside it, because the minimum is only a minimum while that filter is on. Three secondary KPIs follow (whole list, already bought, no price yet): the minimum is only as true as its coverage.
+
+Then **one panel per room**, each with a 3 px progress strip flush under its header showing how much of that room is already bought, and an editable row per article.
 
 ### 5.4 Proyectos
 
@@ -180,15 +204,27 @@ Card per project, **two bars**: spend against budget, and elapsed against target
 
 ### 5.5 Historial
 
-One log across every item, newest first, with scenario **drift** as the hero KPI. Per row: change vs previous, change vs original, % delta. This is a changelog of **estimates**; it is not a transactions feed and must never grow into one.
+Scenario **drift** is the tab's headline, not one KPI among four: a full-width banner tinted by the sign of the answer, with the figure in the display face and a sentence naming what it means. Three KPIs follow, then one log across every item, newest first — change vs previous, change vs original, % delta. This is a changelog of **estimates**; it is not a transactions feed and must never grow into one, which is what the panel's `NO ES UN REGISTRO DE GASTOS` tag is there to keep saying.
+
+Drift is `null` until something has actually been revised. The banner takes the neutral wash in that case and says so — a drift of zero would claim the question has been asked and answered.
 
 ### 5.6 Ajustes
 
 Savings, buffer target, appliance fund contribution, the max-rent guideline percentage (**the only constant in the app, and it lives here as an editable field with its assumption printed beside it**), JSON export / import.
 
-### 5.7 Comparar — proposed
+### 5.7 Comparar
 
-A column per scenario over a shared row set, verdict pills across the top. The rule that makes it usable: **rows where every scenario agrees collapse into one muted line** (*"12 conceptos idénticos — mostrar"*). Only the differences stay open, so three flats fit on one screen. The best cell per row gets an accent underline — the accent marks *look here*, not *good*.
+A **grid**, a column per scenario over a shared row set, with name · situación · verdict pill across the top. Each cell is a value *and its distance from the scenario you are standing in*, so the screen answers "how much worse is this one" without arithmetic.
+
+- **The active scenario's column is tinted `--accent-t`** and its delta cells read *aquí estás*. The accent marks **where you are** — it is interaction, not a verdict. (This replaced an accent underline on the *best* cell per row, which used the accent to mean "good" and broke §1.)
+- **The delta is coloured by outcome, not by sign.** Lower salidas is green, lower entradas is red. `FIANZA (DEVOLVIBLE)` is deliberately neutral: a bigger deposit is more cash to find and none of it is lost, so neither direction is better.
+- **Rows where every scenario agrees collapse into one muted line** (*"12 conceptos idénticos — mostrar"*). Only the differences stay open, so three flats fit on one screen.
+
+### 5.8 Sistema
+
+The component sheet — §2's swatches, §3's three type roles, §4's components — **rendered against the live tokens**. A swatch here is `var(--accent)`, not a hex copied out of this document, which is the whole reason it is a tab and not a picture: it cannot quietly disagree with what ships.
+
+It sits apart on the right of the tab row, and the phone does not carry it at all — the sheet is unreadable at that width, and an eighth item would crowd the bottom nav. Rotating onto a phone while on Sistema falls back to Resumen rather than stranding the user on a screen with no way back.
 
 ---
 
@@ -211,9 +247,9 @@ Each trap in [`DESIGN-BRIEF.md` §4](DESIGN-BRIEF.md) has a specific consequence
 
 | domain rule | visual consequence |
 |---|---|
-| Fianza is refundable | Two KPIs and two ledger totals, never merged. Margin never counts the fianza as burned |
+| Fianza is refundable | Two KPIs and two ledger boxes, never merged, sitting side by side so the gap between them is legible as the deposit. Blue *Devolvible* pill. Margin never counts the fianza as burned |
 | Runway needs a deficit | The sixth KPI changes identity with the sign (§5.1). `∞ meses` has no branch |
-| Max rent is a rule of thumb | Amber guideline strip with its assumption stated. Never a validation error, never blocks input |
+| Max rent is a rule of thumb | The quietest KPI in the grid, with its assumption on the sub-line. Never a validation error, never blocks input |
 | Agency fees are the landlord's | The row **exists**, at `0,00 €`, struck through, with a red *No deberías pagarlo* pill. Omitting it leaves the user to be surprised; budgeting it legitimises it |
 | Electricity is seasonal · promos expire · rent rises | `NOTA` is a wide, always-visible, editable column — not a tooltip, not an icon, not truncated. These notes are what stop a plausible budget being quietly wrong |
 | The empty state is the normal state | Blank amounts render as dashed `— —`, never `0,00 €` — a zero is a claim, a dash is an admission. Every total prints its coverage (*"11 / 14 con importe"*) |
@@ -239,6 +275,7 @@ A real sequence — each step is only safe once the one above it exists.
 | 9 | Muebles → Proyectos → Historial → Ajustes | `src/tabs/` |
 | 10 | Mobile fork + PWA | `src/tabs/CostesMobile.tsx`, `vite-plugin-pwa` |
 | 11 | Comparar | `src/tabs/Comparar.tsx` |
+| 12 | Re-skin to `Independencia` + Sistema | `tokens.css`, `app.css`, all tabs, `src/tabs/Sistema.tsx` |
 
 Two notes on the ordering:
 

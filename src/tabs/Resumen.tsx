@@ -1,32 +1,17 @@
 import { BreakdownBar } from '../components/BreakdownBar';
 import { Insight } from '../components/Insight';
+import type { InsightTone } from '../components/Insight';
 import { KpiCard } from '../components/KpiCard';
 import { Panel } from '../components/Panel';
 import { Tag } from '../components/Tag';
-import type { TagTone } from '../components/Tag';
-import type { DotTone } from '../components/Panel';
+import { VERDICT_DOT } from '../components/VerdictTag';
 import { es, plural } from '../i18n/es';
-import { formatDate } from '../lib/history';
-import {
-  formatEUR,
-  formatMonths,
-  formatPercent,
-  formatSignedEUR,
-} from '../lib/money';
+import { formatEUR, formatMonths, formatPercent } from '../lib/money';
 import type { Derived, SixthKpi } from '../lib/derive';
 import type { Store } from '../state/store';
 
-// `sindatos` is neutral on purpose. It is not a mild yes and not a mild no —
-// it is the absence of an answer, and colouring it would make it one.
-const VERDICT_TONE: Record<Derived['verdict'], TagTone> = {
+const INSIGHT_TONE: Record<Derived['verdict'], InsightTone> = {
   sindatos: 'neutral',
-  ok: 'green',
-  justo: 'amber',
-  falta: 'red',
-};
-
-const VERDICT_DOT: Record<Derived['verdict'], DotTone> = {
-  sindatos: 'accent',
   ok: 'green',
   justo: 'amber',
   falta: 'red',
@@ -89,7 +74,7 @@ function SixthCard({ sixth }: { sixth: SixthKpi }) {
             ? es.resumen.bufferCovered
             : es.resumen.bufferShort
       }
-      tone={noTarget ? 'plain' : sixth.covered ? 'plain' : 'warn'}
+      tone={noTarget ? 'plain' : sixth.covered ? 'info' : 'warn'}
       sub={
         noTarget ? (
           es.resumen.bufferNoTargetSub
@@ -111,7 +96,7 @@ function InsightSentence({ derived }: { derived: Derived }) {
   const missing = coverage.total - coverage.withAmount;
 
   if (totals.inCents === 0 && totals.outCents === 0) {
-    return <Insight>{es.resumen.insightNoData}</Insight>;
+    return <>{es.resumen.insightNoData}</>;
   }
 
   const tail =
@@ -126,7 +111,7 @@ function InsightSentence({ derived }: { derived: Derived }) {
 
   if (verdict === 'falta') {
     return (
-      <Insight>
+      <>
         {es.resumen.insightFaltaPrefix} <b>{formatEUR(derived.shortfallCents)}</b>{' '}
         {es.resumen.insightFaltaSuffix}{' '}
         {runwayMonths === null ? (
@@ -138,13 +123,13 @@ function InsightSentence({ derived }: { derived: Derived }) {
           </>
         )}
         {tail}
-      </Insight>
+      </>
     );
   }
 
   if (verdict === 'justo') {
     return (
-      <Insight>
+      <>
         {es.resumen.insightJustoPrefix} <b>{formatEUR(totals.balanceCents)}</b>{' '}
         {es.resumen.insightJustoSuffix}{' '}
         {sixth.kind === 'margin' && sixth.monthsPerHundred !== null && (
@@ -154,13 +139,13 @@ function InsightSentence({ derived }: { derived: Derived }) {
           </>
         )}
         {tail}
-      </Insight>
+      </>
     );
   }
 
   const target = sixth.kind === 'buffer' ? sixth.targetCents : 0;
   return (
-    <Insight>
+    <>
       {es.resumen.insightOkPrefix} <b>{formatEUR(totals.balanceCents)}</b> {es.resumen.insightOkSuffix}{' '}
       {target === 0 ? (
         es.resumen.insightBufferNoTarget
@@ -174,60 +159,29 @@ function InsightSentence({ derived }: { derived: Derived }) {
         </>
       )}
       {tail}
-    </Insight>
+    </>
   );
 }
 
 export function Resumen({ store }: { store: Store }) {
   const { derived, scenario, state } = store;
   const { totals, upfront, breakdown, coverage } = derived;
-  const missing = coverage.total - coverage.withAmount;
-
-  const verdictText =
-    derived.verdict === 'falta'
-      ? es.verdict.faltaPrefix + formatEUR(derived.shortfallCents) + es.verdict.faltaSuffix
-      : derived.verdict === 'justo'
-        ? es.verdict.justo
-        : derived.verdict === 'sindatos'
-          ? es.verdict.sindatos
-          : es.verdict.ok;
-
-  const verdictSub =
-    derived.verdict === 'falta'
-      ? es.verdict.faltaSub
-      : derived.verdict === 'justo'
-        ? es.verdict.justoSub
-        : derived.verdict === 'sindatos'
-          ? es.verdict.sindatosSub
-          : es.verdict.okSub;
 
   const largest = breakdown.length > 0 ? breakdown[0].monthlyCents : 0;
+  const noIncome = totals.inCents === 0;
 
   return (
     <div className="stack">
       <Panel
-        label={es.resumen.verdictPanel}
+        label={`${es.resumen.verdictPanel} · ${scenario.name}`}
         tone={VERDICT_DOT[derived.verdict]}
-        actions={
-          <span>
-            {es.resumen.createdOn} {formatDate(scenario.createdAt)} · {es.resumen.driftLabel}{' '}
-            {derived.driftCents === null
-              ? es.resumen.driftNone
-              : formatSignedEUR(derived.driftCents) + es.common.perMonth}
-          </span>
-        }
+        actions={<span>{es.situacion[scenario.situacion]}</span>}
       >
-        <div className="pb row-actions">
-          <Tag tone={VERDICT_TONE[derived.verdict]} big>
-            {verdictText}
-          </Tag>
-          <span className="cell-note">{verdictSub}</span>
-        </div>
-
-        <div className="kgrid k6">
+        <div className="kgrid k5">
           <KpiCard
             label={es.resumen.kpiIn}
             cents={totals.inCents}
+            tone={totals.inCents > 0 ? 'pos' : 'plain'}
             sub={
               <>
                 {totals.inCount}{' '}
@@ -240,6 +194,7 @@ export function Resumen({ store }: { store: Store }) {
           <KpiCard
             label={es.resumen.kpiOut}
             cents={totals.outCents}
+            tone={totals.outCents > 0 ? 'neg' : 'plain'}
             sub={
               <>
                 {es.resumen.outSubPrefix} {coverage.withAmount} {es.resumen.outSubMiddle}{' '}
@@ -273,118 +228,146 @@ export function Resumen({ store }: { store: Store }) {
               )
             }
           />
-          <KpiCard
-            label={es.resumen.kpiUpfront}
-            cents={upfront.cashCents}
-            sub={es.resumen.upfrontSub}
-          />
+          <KpiCard label={es.resumen.kpiUpfront} cents={upfront.cashCents} sub={es.resumen.upfrontSub} />
+
           <KpiCard
             label={es.resumen.kpiSpend}
             cents={upfront.spendCents}
-            sub={es.resumen.spendSub}
+            tone="warn"
+            sub={
+              <>
+                {es.resumen.spendSubPrefix} {formatEUR(upfront.refundableCents)}
+                <br />
+                {es.resumen.spendSub}
+              </>
+            }
           />
           <SixthCard sixth={derived.sixth} />
-        </div>
-
-        <div className="guide">
-          {totals.inCents === 0 ? (
-            <span className="why">{es.resumen.guideNoIncome}</span>
-          ) : (
-            <>
-              <b>
-                {es.resumen.guidePrefix} {formatEUR(derived.maxAffordableRentCents)}
-                {es.common.perMonth}
-              </b>
-              <span className="why">
-                {es.resumen.guideWhyPrefix} {state.settings.maxRentPercent} %{' '}
-                {es.resumen.guideWhyMiddle} {formatEUR(totals.inCents)}
-                {es.resumen.guideWhySuffix}
-              </span>
-            </>
-          )}
+          {/* A guideline, and it looks like one: the quietest number on the
+              screen, with its assumption printed under it. It never gates. */}
+          <KpiCard
+            label={es.resumen.kpiMaxRent}
+            cents={noIncome ? undefined : derived.maxAffordableRentCents}
+            value={noIncome ? es.common.none : undefined}
+            tone="quiet"
+            sub={
+              noIncome ? (
+                es.resumen.guideNoIncome
+              ) : (
+                <>
+                  {es.resumen.guideWhyPrefix} {state.settings.maxRentPercent} %{' '}
+                  {es.resumen.guideWhyMiddle} {formatEUR(totals.inCents)}
+                  {es.common.perMonth}
+                  <br />
+                  {es.resumen.guideWhySuffix}
+                </>
+              )
+            }
+          />
+          <KpiCard
+            label={es.resumen.kpiDrift}
+            cents={derived.driftCents ?? undefined}
+            value={derived.driftCents === null ? es.common.none : undefined}
+            signed
+            wide
+            tone={
+              derived.driftCents === null ? 'plain' : derived.driftCents > 0 ? 'neg' : 'pos'
+            }
+            sub={derived.driftCents === null ? es.resumen.driftNone : es.resumen.driftSub}
+          />
         </div>
       </Panel>
 
       <div className="res-split">
         <Panel
           label={es.resumen.barsPanel}
+          tone="blue"
           actions={
             <span>
               {formatEUR(totals.outCents)}
               {es.common.perMonth}
             </span>
           }
-          body={
-            breakdown.length === 0 ? (
-              <div className="empty-note">{es.resumen.insightNoData}</div>
-            ) : (
-              breakdown.map((slice, i) => (
+        >
+          {breakdown.length === 0 ? (
+            <div className="empty-note">{es.resumen.insightNoData}</div>
+          ) : (
+            <div className="bars">
+              {breakdown.map((slice, i) => (
                 <BreakdownBar
                   key={slice.category}
                   label={es.category[slice.category]}
                   percent={slice.percent}
                   fraction={largest === 0 ? 0 : (slice.monthlyCents / largest) * 0.92}
                   amountCents={slice.monthlyCents}
-                  opacity={Math.max(0.34, 1 - i * 0.11)}
+                  opacity={Math.max(0.38, 1 - i * 0.13)}
                   missingCount={slice.missingCount}
                   pausedLabel={slice.allPaused ? es.resumen.barsPaused : undefined}
                 />
-              ))
-            )
-          }
-        />
+              ))}
+            </div>
+          )}
+        </Panel>
 
-        <Panel
-          label={es.resumen.upfrontPanel}
-          actions={<span>{es.resumen.upfrontPanelTag}</span>}
-          body={
-            <>
-              <div className="ledger">
-                {upfront.lines.length === 0 && (
-                  <div className="empty-note">{es.resumen.ledgerEmpty}</div>
-                )}
-                {upfront.lines.map((line) => (
-                  <div
-                    className={line.shouldNotPay ? 'lrow flagged' : 'lrow'}
-                    key={line.id}
-                  >
-                    <span className="ll">
-                      {line.label}
-                      {line.refundable && <Tag tone="green">{es.resumen.refundable}</Tag>}
-                      {line.shouldNotPay && <Tag tone="red">{es.resumen.shouldNotPay}</Tag>}
-                    </span>
-                    <span className="lv">{formatEUR(line.amountCents)}</span>
-                  </div>
-                ))}
-                <div className="lrow sum">
-                  <span className="ll">{es.resumen.ledgerUpfront}</span>
-                  <span className="lv">{formatEUR(upfront.cashCents)}</span>
-                </div>
-                <div className="lrow sum tight">
-                  <span className="ll">{es.resumen.ledgerSpend}</span>
-                  <span className="lv">{formatEUR(upfront.spendCents)}</span>
-                </div>
+        <Panel label={es.resumen.upfrontPanel} tone="amber">
+          <div className="ledger">
+            {upfront.lines.length === 0 && (
+              <div className="empty-note">{es.resumen.ledgerEmpty}</div>
+            )}
+            {upfront.lines.map((line) => (
+              <div className={line.shouldNotPay ? 'lrow flagged' : 'lrow'} key={line.id}>
+                <span className="ll">
+                  {line.label}
+                  {line.refundable && <Tag tone="blue">{es.resumen.refundable}</Tag>}
+                  {line.shouldNotPay && <Tag tone="red">{es.resumen.shouldNotPay}</Tag>}
+                </span>
+                <span className="lv">{formatEUR(line.amountCents)}</span>
               </div>
-              <div className="micro" style={{ marginTop: 9 }}>
-                {es.resumen.ledgerNote}
-                {upfront.missingCount > 0 && (
-                  <>
-                    <br />
-                    {upfront.missingCount}{' '}
-                    {plural(upfront.missingCount, es.resumen.ledgerMissingOne, es.resumen.ledgerMissing)}
-                  </>
-                )}
+            ))}
+          </div>
+
+          {/* The two figures the ledger exists to separate. The gap between
+              them is exactly the fianza, which is why they sit side by side. */}
+          <div className="upsum">
+            <div className="upboxes">
+              <div className="upbox">
+                <div className="ul">{es.resumen.ledgerUpfront}</div>
+                <div className="uv">{formatEUR(upfront.cashCents)}</div>
               </div>
-            </>
-          }
-        />
+              <div className="upbox warn">
+                <div className="ul">{es.resumen.ledgerSpend}</div>
+                <div className="uv">{formatEUR(upfront.spendCents)}</div>
+              </div>
+            </div>
+            <p className="upnote">
+              {upfront.refundableCents > 0 ? (
+                <>
+                  {es.resumen.fianzaNotePrefix} {formatEUR(upfront.refundableCents)}{' '}
+                  {es.resumen.fianzaNoteMiddle} <b>{es.resumen.fianzaNoteWord}</b>{' '}
+                  {es.resumen.fianzaNoteSuffix}
+                </>
+              ) : (
+                es.resumen.ledgerNote
+              )}
+              {upfront.missingCount > 0 && (
+                <>
+                  <br />
+                  {upfront.missingCount}{' '}
+                  {plural(
+                    upfront.missingCount,
+                    es.resumen.ledgerMissingOne,
+                    es.resumen.ledgerMissing,
+                  )}
+                </>
+              )}
+            </p>
+          </div>
+        </Panel>
       </div>
 
-      <Panel
-        label={es.resumen.insightPanel}
-        tone={missing > 0 ? 'amber' : 'accent'}
-        body={<InsightSentence derived={derived} />}
-      />
+      <Insight label={es.resumen.insightPanel} tone={INSIGHT_TONE[derived.verdict]}>
+        <InsightSentence derived={derived} />
+      </Insight>
     </div>
   );
 }

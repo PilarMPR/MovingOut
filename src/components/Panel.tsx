@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 
-export type DotTone = 'accent' | 'green' | 'red' | 'amber';
+export type DotTone = 'accent' | 'green' | 'red' | 'amber' | 'blue';
 
 const DOT_CLASS: Record<DotTone, string> = {
   accent: 'dot',
   green: 'dot g',
   red: 'dot r',
   amber: 'dot a',
+  blue: 'dot b',
 };
 
 interface Props {

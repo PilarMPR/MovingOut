@@ -65,6 +65,13 @@ export function Proyectos({ store }: { store: Store }) {
                   />
                 </h4>
 
+                {/* Spent against budget, in one line, in the display face —
+                    the card's headline is the money, not the name. */}
+                <div className="pspend">
+                  <b>{formatEUR(progress.spentCents)}</b>
+                  <span>/ {formatEUR(project.budgetCents)}</span>
+                </div>
+
                 <div className="pmeta">
                   <span className="pfield">
                     {es.proyectos.budget}

@@ -44,6 +44,7 @@ export const es = {
     historial: 'Historial',
     ajustes: 'Ajustes',
     comparar: 'Comparar',
+    sistema: '◇ Sistema',
   },
 
   tabsShort: {
@@ -115,17 +116,13 @@ export const es = {
     justo: '⚠ Justo',
     faltaPrefix: '✗ Te faltan ',
     faltaSuffix: '/mes',
-    sindatosSub: 'Rellena importes en Costes y aquí aparecerá la respuesta.',
-    okSub: 'Con los importes de hoy y sin contar la fianza como gasto.',
-    justoSub: 'Sale, pero sin nada detrás. Un imprevisto lo tumba.',
-    faltaSub: 'Con estas entradas, este piso no sale.',
+    // The one-line gloss each verdict used to carry is gone: the insight
+    // banner at the foot of Resumen now says more, in the same voice, and two
+    // sentences explaining one pill is one too many.
   },
 
   resumen: {
-    verdictPanel: 'Veredicto',
-    createdOn: 'Escenario creado el',
-    driftLabel: 'desviación',
-    driftNone: 'sin revisiones todavía',
+    verdictPanel: 'Resumen',
     kpiIn: 'Entradas / mes',
     kpiOut: 'Salidas / mes',
     kpiBalance: 'Balance',
@@ -134,6 +131,10 @@ export const es = {
     kpiRunway: 'Meses de margen',
     kpiMargin: 'Margen',
     kpiBuffer: 'Colchón',
+    kpiMaxRent: 'Alquiler máx. orientativo',
+    kpiDrift: 'Desviación',
+    driftSub: 'frente a cuando creaste el escenario',
+    driftNone: 'sin revisiones todavía',
     inSub: 'ninguna entrada es fija',
     outSubPrefix: 'sobre',
     outSubMiddle: 'de',
@@ -141,7 +142,8 @@ export const es = {
     balanceSub: 'entradas − salidas',
     balanceShare: 'de las entradas',
     upfrontSub: 'fianza incluida',
-    spendSub: 'sin la fianza, que vuelve',
+    spendSubPrefix: 'menos',
+    spendSub: 'de fianza, que vuelve',
     runwayNone: 'sin ahorro tras entrar',
     runwaySubPrefix: 'de ahorro tras entrar ÷',
     runwaySubSuffix: '/mes de déficit',
@@ -154,23 +156,26 @@ export const es = {
     bufferSubPrefix: 'objetivo',
     bufferSubMiddle: '· te quedan',
     bufferSubSuffix: 'tras entrar',
-    guidePrefix: 'Alquiler máx. orientativo ·',
     guideWhyPrefix: 'Regla del',
     guideWhyMiddle: 'sobre',
-    guideWhySuffix: '/mes de entradas. Es una referencia, no un límite.',
+    guideWhySuffix: 'Es una referencia, no un límite.',
     guideNoIncome: 'Sin entradas registradas no hay referencia que dar.',
     barsPanel: 'A dónde va el dinero',
     barsPaused: 'pausado',
-    upfrontPanel: 'Antes de dormir allí',
-    upfrontPanelTag: 'Único',
-    ledgerUpfront: 'Dinero al entrar',
+    upfrontPanel: 'Dinero al entrar',
+    ledgerUpfront: 'Necesitas tener',
     ledgerSpend: 'Gasto real',
     ledgerNote:
       'La fianza está en «al entrar» y fuera de «gasto real». El margen nunca la cuenta como quemada.',
+    fianzaNotePrefix: 'La fianza de',
+    fianzaNoteMiddle: 'es',
+    fianzaNoteWord: 'recuperable',
+    fianzaNoteSuffix:
+      'al salir si dejas el piso bien. Es dinero que necesitas tener, no dinero que gastas.',
     ledgerMissing: 'conceptos únicos sin importe — la cifra puede subir',
     ledgerMissingOne: 'concepto único sin importe — la cifra puede subir',
     ledgerEmpty: 'Todavía no hay ningún gasto único con importe.',
-    insightPanel: 'En una frase',
+    insightPanel: 'La respuesta',
     refundable: 'Devolvible',
     shouldNotPay: 'No deberías pagarlo',
     furnitureLine: 'Muebles esenciales',
@@ -220,7 +225,13 @@ export const es = {
     empty: '— —',
     noCount: 'no cuenta',
     oneOff: 'único',
-    totalRow: 'Total · normalizado a mes',
+    eqOneOff: 'Pago único',
+    /** The `≡` says the figure was normalised, and from which real frequency. */
+    eqFrom: '≡',
+    totalRow: 'Totales · normalizado a mes',
+    totalFiltered: 'filtrado',
+    totalAll: 'todo el escenario',
+    totalBalance: 'Balance',
     totalConcepts: 'conceptos',
     totalConcept: 'concepto',
     add: '+ Añadir concepto',
@@ -239,8 +250,11 @@ export const es = {
   },
 
   muebles: {
-    kpiMinimum: 'Mínimo para entrar',
-    kpiMinimumSub: 'sólo esenciales pendientes',
+    heroLabel: 'Mínimo real para entrar a vivir',
+    heroSubEssential: 'sólo lo esencial pendiente de comprar',
+    heroSubAll: 'todo lo pendiente, esencial y deseable',
+    rooms: 'estancias',
+    roomOne: 'estancia',
     kpiWhole: 'Toda la lista',
     kpiWholeSub: 'esenciales + deseables pendientes',
     kpiPaid: 'Ya comprado',
@@ -286,9 +300,15 @@ export const es = {
   },
 
   historial: {
-    kpiDrift: 'Desviación del escenario',
-    kpiDriftSub: 'frente a cuando lo creaste',
-    kpiDriftNone: 'sin revisiones todavía',
+    driftPanel: 'Desviación de este escenario',
+    driftUpPrefix: 'Este piso sale hoy',
+    driftUpSuffix:
+      'al mes más caro que cuando lo apuntaste. Merece la pena mirar qué línea se ha movido antes de dar el escenario por bueno.',
+    driftDownPrefix: 'Este escenario sale hoy',
+    driftDownSuffix: 'al mes más barato que cuando lo apuntaste.',
+    driftFlatNote: 'Las revisiones se compensan: hoy cuesta lo mismo que cuando lo apuntaste.',
+    driftNoneNote:
+      'Sin cambios desde que lo apuntaste. Ninguna estimación se ha revisado todavía, así que no hay desviación que medir.',
     kpiRevisions: 'Revisiones',
     kpiRevisionsSub: 'conceptos revisados',
     kpiRevisionsSubOne: 'concepto revisado',
@@ -314,6 +334,7 @@ export const es = {
     empty:
       'Todavía no hay revisiones. Cada vez que cambies un importe se apunta aquí, y así se ve si el piso se ha encarecido desde que lo planeaste.',
     note: 'Esto es un registro de estimaciones, no de gastos. No hay que apuntar nada a diario.',
+    noteShort: 'No es un registro de gastos',
   },
 
   ajustes: {
@@ -334,6 +355,9 @@ export const es = {
     exportTitle: 'Exportar / importar',
     exportHint:
       'Los datos viven en este dispositivo. El JSON es la copia de seguridad y la forma de pasarlos a otro sitio.',
+    backupTitle: 'Sin cuenta, sin servidor, sin sincronización',
+    backupNote:
+      'Todo vive en este dispositivo. El fichero JSON es la única copia que existe: descárgalo antes de cambiar de móvil.',
     exportButton: 'Exportar JSON',
     importButton: 'Importar JSON',
     importError: 'Ese archivo no tiene la forma esperada. No se ha tocado nada.',
@@ -351,7 +375,13 @@ export const es = {
     panel: 'Comparar escenarios',
     onlyDifferences: 'Sólo diferencias',
     onlyDifferencesOn: 'Sólo diferencias · activo',
+    against: 'Diferencias contra',
+    here: 'aquí estás',
+    equal: 'igual',
+    insightLabel: 'La respuesta',
+    note: 'Las diferencias se calculan contra el escenario activo. Cambiar la situación en la cabecera recalcula todas las columnas a la vez: es la forma de responder «¿y si consigo trabajo?» sin duplicar escenarios.',
     rowVerdict: 'Veredicto',
+    rowFianza: 'Fianza (devolvible)',
     rowBalance: 'Balance / mes',
     rowIn: 'Entradas / mes',
     rowOut: 'Salidas / mes',
@@ -376,10 +406,56 @@ export const es = {
     insightTie: 'Los escenarios comparados dejan exactamente el mismo margen.',
   },
 
+  /**
+   * The Sistema tab: the component sheet rendered against the live tokens.
+   * Reference copy rather than product copy, but it is still Spanish on screen,
+   * so it still lives here (IND008).
+   */
+  sistema: {
+    tokensPanel: 'Tokens · :root',
+    tokensNote: 'Una sola paleta · Papel',
+    roles: {
+      bg: 'fondo',
+      card: 'tarjeta',
+      sunk: 'relleno',
+      ink: 'cabeceras',
+      border: 'hairline',
+      text: 'texto',
+      muted: 'secundario',
+      accent: 'acento · interacción',
+      green: 'positivo',
+      red: 'negativo',
+      amber: 'aviso',
+      blue: 'informativo',
+    },
+    typePanel: 'Tipografía · tres papeles fijos',
+    typeNote: 'Archivo · JetBrains Mono · Public Sans',
+    typeDisplay: 'Display · Archivo',
+    typeDisplayUse: 'sólo cifras KPI y títulos',
+    typeMono: 'Mono · JetBrains',
+    typeMonoUse: 'etiquetas, tablas, botones, tags',
+    typeBody: 'Body · Public Sans',
+    typeBodySample: 'Con este piso te faltan 120 € al mes.',
+    typeBodyUse: 'prosa e insights',
+    componentsPanel: 'Componentes',
+    sheetTags: 'Tags de veredicto y estado',
+    sheetTagsNote:
+      'El color es significado: verde, ámbar y rojo por signo. Azul es informativo — pagado, devolvible, pago único — y no es ni bueno ni malo. Pausado no lleva color: es una ausencia, no un juicio.',
+    sheetCell: 'Celda editable · reposo / foco',
+    sheetCellNote: 'el foco levanta la celda; no hay botón de guardar',
+    sheetSelects: 'Selects de estado y dirección',
+    sheetSelectsNote: 'el color lo decide el valor seleccionado, para leer la tabla de un vistazo',
+    sheetButtons: 'Botones',
+    sheetBars: 'Barras de reparto',
+    sheetBarsNote:
+      'Un solo tono de acento a opacidad descendente. Una categoría nunca tiene color propio: en cuanto vivienda es azul, el verde deja de significar «bien».',
+  },
+
   common: {
     yes: 'Sí',
     no: 'No',
     none: '—',
+    euro: '€',
     of: 'de',
     perMonth: '/mes',
     monthsShort: 'meses',

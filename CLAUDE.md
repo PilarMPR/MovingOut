@@ -12,7 +12,11 @@ Context that shapes the numbers: the user is currently a **student with no stead
 
 UI strings are **Spanish**; code, comments and docs are **English**. See [Language](#language).
 
-> **Status — 2026-08-09: the app is built.** All eleven steps of the build order in `DESIGN-SYSTEM.md` §8 have landed: tokens, types, `lib`, storage, `i18n`, the component sheet, all seven screens, the mobile fork, and the PWA. 82 tests over `src/lib`. Nothing is deployed yet.
+> **Status — 2026-08-11: built, and re-skinned to the `Independencia` design.** All eleven steps of the build order in `DESIGN-SYSTEM.md` §8 landed on 2026-08-09: tokens, types, `lib`, storage, `i18n`, the component sheet, all seven screens, the mobile fork, and the PWA.
+>
+> Step 12 — the re-skin to the Claude Design project *Moving out finances app* (`Independencia.dc.html`) — landed on 2026-08-11: a new palette and type stack, a `Sistema` tab, and layout changes to Resumen, Costes, Muebles, Historial and Comparar. **`npm install` is required after pulling**: the mono and body faces changed packages. `tsc` clean, 85 tests over `src/lib` green, production build succeeds. Nothing is deployed yet.
+
+> **Node lives at `/home/p/.local/share/node/bin` and is not on `PATH`.** `export PATH="/home/p/.local/share/node/bin:$PATH"` before any `npm` command, or every script in the next section reports "command not found" and it looks like the toolchain is missing when it is not.
 
 ## Running
 
@@ -134,7 +138,7 @@ The notes that stop a plausible-looking calculation being quietly wrong:
 
 ## UI shape — the Command Center skin
 
-> **The design is resolved.** [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) holds the final token block, the component sheet, every screen and the mobile fork. **Read it before writing any component**, and prefer it over this section when the two disagree. A working prototype of all of it is [`docs/mockups/movingout.html`](docs/mockups/movingout.html) — open it in a browser, no build step. What follows is the summary.
+> **The design is resolved.** [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) holds the token block, the component sheet, every screen and the mobile fork. **Read it before writing any component**, and prefer it over this section when the two disagree. The live component sheet is the app's own **Sistema** tab, rendered against the real tokens — prefer it over any picture. [`docs/mockups/movingout.html`](docs/mockups/movingout.html) is the *previous* design, kept as a record of it. What follows is the summary.
 
 The visual and interaction grammar is lifted from a sibling repo the user owns: `~/repos/work/HotPotato_CommandCenter` (`index.html`). Read its Overview and Financiero tabs before designing a screen here. Locate the reference with:
 
@@ -143,32 +147,34 @@ grep -n 'DESIGN TOKENS\|^\.panel\|^\.kpi\|^\.tag\|^\.tbl' ~/repos/work/HotPotato
 grep -n 'HP\.renderOverview\|HP\.renderFinanciero' ~/repos/work/HotPotato_CommandCenter/index.html
 ```
 
-Tabs: **Resumen · Costes · Muebles · Proyectos · Historial · Ajustes**, plus **Comparar** — the side-by-side scenario view, specified in `DESIGN-SYSTEM.md` §5.7. Comparison is the reason the app exists, so it is a screen, not a mode.
+Tabs: **Resumen · Costes · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema**. Comparison is the reason the app exists, so it is a screen, not a mode. Sistema is the component sheet rendered against the live tokens; it sits apart on the right of the tab row and is desktop-only.
 
 The grammar to keep:
 
 - dark panel headers with mono, uppercase, letter-spaced micro-labels
-- big display-font KPI numbers, coloured green / red / amber **by sign**
+- big display-font KPI numbers, coloured green / red / amber **by sign**, blue for a fact that has no sign
 - `.tag`-style pills for verdicts (`✓ TE LO PUEDES PERMITIR` / `✗ TE FALTAN 120 €/MES`)
 - horizontal breakdown bars for where the money goes
 - **inline-editable table cells** that write straight to state — the whole Costes tab is one editable grid, not a form behind a modal
 - **status `<select>`s whose colour is driven by the selected value**, so the table is readable at a glance
 - one plain-language insight line at the bottom of Resumen that states the answer in a sentence
 
-### The palette — chosen 2026-08-09
+### The palette — `Independencia` / Papel, adopted 2026-08-11
 
-Warm plaster ground, warm near-black ink, **mulberry** accent, earth semantics. Light mode only: the product commits to one look, and dark mode is not a gap. The full block is in [`docs/DESIGN-SYSTEM.md`](docs/DESIGN-SYSTEM.md) §2, ready to paste into `src/styles/tokens.css` as step 1 of the build.
+Warm paper ground, near-black ink, **indigo** accent, four semantics. **Light mode only**: the product commits to one look. The design also ships Plano and Noche; neither is built, and `DESIGN-SYSTEM.md` §2 records what shipping one would cost.
 
-**Every colour lives as a CSS custom property in a single `:root` token block**, exactly as the reference does, and Tailwind is configured to consume those variables rather than hardcode hex values. Swapping the palette is then nine lines, not a sweep across components. **Do not introduce a raw hex anywhere outside that block.**
+**Every colour lives as a CSS custom property in a single `:root` token block** in `src/styles/tokens.css`, and Tailwind consumes those variables rather than hardcoding hex values. Swapping the palette is that block, not a sweep across components. **Do not introduce a raw hex anywhere outside it.**
 
-The rule that generated the palette, and the one most likely to be undone by accident:
+The rule that generates the palette, and the one most likely to be undone by accident:
 
 | | carries | used for |
 |---|---|---|
-| **Semantic** — green `#3D6B33` · red `#B23A25` · amber `#8A6212` | **meaning** | sign of the balance, state of a row, the verdict |
-| **Accent** — mulberry `#7B3A87` | **interaction** | focus ring, active tab, primary button, links, add-row |
+| **Semantic** — green `#157F4C` · red `#C0271A` · amber `#9E6400` · blue `#0E7490` | **meaning** | sign of the balance, state of a row, the verdict |
+| **Accent** — indigo `#4438CA` | **interaction** | focus ring, active tab, primary button, links, add-row |
 
-They never overlap. A category never gets a colour of its own — breakdown bars are one warm brown at descending opacity — because the moment `vivienda` is blue, green stops meaning "good". **If a number renders in the accent, that is a bug.** `pagado` and `pausado` get no hue at all (`--stone`): neither is good or bad, which is why there is no `--info` token.
+They never overlap. A category never gets a colour of its own — breakdown bars are one accent tone at descending opacity — because the moment `vivienda` is blue, green stops meaning "good". **If a number renders in the accent, that is a bug.**
+
+**`--blue` is informational, and it is new.** It carries the three facts that are neither good nor bad: an amount already `pagado`, money that is refundable, and a `único` payment with no monthly equivalent to report. `pausado` still gets **no hue at all** — it is a deliberate absence rather than a fact, and colouring it would turn an exclusion into a judgement. (This repo previously said there is no `--info` token; `DESIGN-SYSTEM.md` §1 has the argument for why that changed.)
 
 ## Architecture conventions
 
@@ -177,7 +183,7 @@ They never overlap. A category never gets a colour of its own — breakdown bars
 - **`src/types.ts`** — the single source of truth for the model above.
 - **`src/i18n/es.ts`** — every Spanish string, plus `plural()`. No Spanish literals in components (`IND008`).
 - **`src/state/store.ts`** — the `useStore` hook: the one piece of mutable state, and the only caller of `storage`. Not in `lib/`, because `lib/` does not know React exists. Tabs receive it as a prop; there is no context.
-- **`src/components/`** is the ten-component sheet from `DESIGN-SYSTEM.md` §4; **`src/tabs/`** is one file per screen, assembled from those and reaching past them for nothing.
+- **`src/components/`** is the twelve-component sheet from `DESIGN-SYSTEM.md` §4; **`src/tabs/`** is one file per screen, assembled from those and reaching past them for nothing. `src/tabs/Sistema.tsx` renders that sheet against the live tokens, which is what stops it drifting from what ships.
 
 Long-form, with the reasoning: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
@@ -245,7 +251,7 @@ English for `CLAUDE.md`, `.claude/`, `docs/`, `CHANGELOG.md`, code identifiers, 
 
 ### Next step
 
-The build order is done. What is left is the part only real use can drive:
+The build order is done and the re-skin has landed, type-checked, tested and built. What is left is the part only real use can drive:
 
 1. **Fill in one real scenario** and see whether the seeded checklist is missing anything — the seed is a prediction from `COST-CHECKLIST.md`, not a used list.
 2. **Deploy** to a static host and install it on the phone. The export/import round-trip is the only backup story, so it wants testing on the device that will actually hold the data.

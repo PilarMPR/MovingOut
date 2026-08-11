@@ -485,6 +485,11 @@ export interface RoomGroup {
   pendingCount: number;
   pendingCents: Cents;
   missingPriceCount: number;
+  /** Already bought, in this room. */
+  paidCents: Cents;
+  /** Paid plus pending — the denominator of the room's progress strip.
+   *  Priced items only: a room is not "0 % done" because nothing has a price. */
+  totalCents: Cents;
 }
 
 /**
@@ -498,7 +503,15 @@ export interface RoomGroup {
 export function furnitureByRoom(furniture: Entry[], onlyEssential: boolean): RoomGroup[] {
   const groups = new Map<Room, RoomGroup>();
   for (const room of ROOMS) {
-    groups.set(room, { room, items: [], pendingCount: 0, pendingCents: 0, missingPriceCount: 0 });
+    groups.set(room, {
+      room,
+      items: [],
+      pendingCount: 0,
+      pendingCents: 0,
+      missingPriceCount: 0,
+      paidCents: 0,
+      totalCents: 0,
+    });
   }
 
   for (const item of furniture) {
@@ -506,10 +519,18 @@ export function furnitureByRoom(furniture: Entry[], onlyEssential: boolean): Roo
     const group = groups.get(item.room ?? 'otros');
     if (group === undefined) continue;
     group.items.push(item);
-    if (item.status === 'pagado' || item.status === 'pausado') continue;
+    if (item.status === 'pagado') {
+      if (item.hasAmount) {
+        group.paidCents += item.amountCents;
+        group.totalCents += item.amountCents;
+      }
+      continue;
+    }
+    if (item.status === 'pausado') continue;
     group.pendingCount += 1;
     if (item.hasAmount) {
       group.pendingCents += item.amountCents;
+      group.totalCents += item.amountCents;
     } else {
       group.missingPriceCount += 1;
     }

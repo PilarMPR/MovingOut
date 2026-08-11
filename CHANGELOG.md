@@ -6,6 +6,31 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — re-skinned to the `Independencia` design
+
+Step 12 of `DESIGN-SYSTEM.md` §8. The Claude Design project *Moving out finances app* (`Independencia.dc.html`), ported into the running app.
+
+> **`npm install` is required after pulling** — the mono and body faces changed packages. Verified after that: `tsc -b` clean, 85 tests green, `vite build` succeeds, PWA precache regenerated.
+
+### Changed
+- **The palette.** Warm plaster + mulberry → warm paper + **indigo**. `src/styles/tokens.css` is the whole change: `--bg:#EFEDE7`, `--card:#FFFFFF`, `--ink:#17191C`, `--accent:#4438CA`. Light mode only, still — the design's Plano and Noche variants are recorded in `DESIGN-SYSTEM.md` §2 and deliberately not built.
+- **A fourth semantic, `--blue` `#0E7490`.** Informational: `pagado`, *devolvible*, *pago único* — the three facts that are neither good nor bad. `pausado` keeps no hue at all. This reverses "there is no `--info` token"; the argument is in `DESIGN-SYSTEM.md` §1 and `docs/DEVLOG.md`.
+- **The type stack.** IBM Plex Mono/Sans → **JetBrains Mono** and **Public Sans**; Archivo drops from Expanded 800 to normal-width 600, so `main.tsx` imports the `wght` axis rather than `wdth`. **`npm install` is required** — two `@fontsource` packages were swapped in `package.json`.
+- **The header.** Micro-labelled `ESCENARIO` / `SITUACIÓN` selects, the tab row moved into the ink bar with the active tab cut out of it in `--bg`, and **the verdict pill now rides in the header** — it is true on every tab, so it should not be something you navigate back to Resumen to read.
+- **Resumen.** Five-column KPI grid, exactly full over two rows, with `BALANCE` and `DESVIACIÓN` spanning two. The max-rent guideline became the quietest KPI instead of an amber strip; drift moved in from the panel header. The upfront ledger ends in two side-by-side boxes — *necesitas tener* and *gasto real* — because the gap between them is exactly the fianza. The insight line became a full-width banner tinted by the sign of the answer.
+- **Costes.** Nine columns, `CONCEPTO` sticky under horizontal scroll, pill `<select>`s for tipo and estado, `entrada` rows tinted, and the monthly equivalent annotated `≡ BIMESTRAL` rather than `÷2`. The `▲ 14 %` chip beside the amount became a **revision counter** at the end of the row, tinted by the direction of the last change — same signal, one column cheaper, and it was already the drawer's handle.
+- **Muebles.** A hero card carrying *mínimo real para entrar a vivir* with the "sólo esenciales" toggle beside it, then one panel per room with a progress strip under its header.
+- **Historial.** Drift is the headline — a banner tinted by its sign — rather than one KPI among four.
+- **Comparar.** A grid where each cell is a value **and its distance from the scenario you are standing in**. The active column is tinted with the accent (*where you are*); deltas are green or red by outcome. This also fixes a §1 violation: the old screen accented the *best* cell, using the interaction colour to mean "good".
+
+### Added
+- **`src/tabs/Sistema.tsx`** — the component sheet as an eighth tab, rendered against the live tokens rather than copied from a document, so it cannot drift from what ships. Desktop only; on a phone it falls back to Resumen.
+- **`src/components/VerdictTag.tsx`** — the verdict's wording and colour in one place, now that the header, Resumen and Comparar all print it.
+- **`DirectionSelect`**, and a `pill` `Button` variant for the Muebles toggle.
+- **`RoomGroup.paidCents` / `.totalCents`** in `src/lib/derive.ts`, so the per-room progress strip is derived in `lib` and not summed inside a component (IND007).
+
+---
+
 ## Unreleased — the app exists
 
 The whole build order from `DESIGN-SYSTEM.md` §8, steps 1–11.

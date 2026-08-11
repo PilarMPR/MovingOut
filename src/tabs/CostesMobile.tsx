@@ -3,7 +3,7 @@ import { AddRow } from '../components/AddRow';
 import { Button } from '../components/Button';
 import { EditableAmount, EditableText } from '../components/EditableCell';
 import { Chip } from '../components/FilterBar';
-import { Select, StatusSelect } from '../components/Select';
+import { DirectionSelect, Select, StatusSelect } from '../components/Select';
 import { es } from '../i18n/es';
 import { divisorLabel, toMonthly } from '../lib/frequency';
 import { delta } from '../lib/history';
@@ -116,12 +116,11 @@ function Card({ entry, store, open, onToggle }: CardProps) {
               ariaLabel={es.costes.colStatus}
               onChange={(status) => store.patchEntry(entry.id, { status })}
             />
-            <Select
+            <DirectionSelect
               value={entry.direction}
               options={DIRECTIONS}
               labels={es.direction}
               ariaLabel={es.costes.colType}
-              incoming={entry.direction === 'entrada'}
               onChange={(direction) => store.patchEntry(entry.id, { direction })}
             />
             <Select
@@ -178,9 +177,13 @@ interface Props {
 
 export function CostesMobile({ store, filters, onFilters }: Props) {
   const [open, setOpen] = useState<string | null>(null);
-  const { costes, totals } = store.derived;
+  const { costes, totals, verdict } = store.derived;
   const rows = applyFilters(costes, filters);
   const set = (patch: Partial<Filters>) => onFilters({ ...filters, ...patch });
+
+  // The footer figure takes the verdict's colour, not the raw sign: a balance
+  // of +8 € is positive and still not a yes.
+  const footTone = verdict === 'falta' ? 'neg' : verdict === 'justo' ? 'warn' : verdict === 'ok' ? 'pos' : '';
 
   return (
     <>
@@ -222,7 +225,7 @@ export function CostesMobile({ store, filters, onFilters }: Props) {
 
       <div className="mfoot">
         <b>{es.resumen.kpiBalance}</b>
-        <span className={totals.balanceCents >= 0 ? 'pos' : 'neg'}>
+        <span className={footTone === '' ? undefined : footTone}>
           {formatSignedEUR(totals.balanceCents)}
           {es.common.perMonth}
         </span>
