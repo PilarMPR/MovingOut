@@ -40,7 +40,21 @@ npm run android:apk  # debug APK via Gradle
 
 It deliberately does **not** run from `release/`. That directory is build output — gitignored, and wiped by `rm -rf release` on any repackage — so a launcher pointing into it breaks the moment you rebuild, and worse, it runs whatever happens to be in the working tree, including someone else's half-finished feature. Package from a clean checkout of the branch, then copy.
 
-Note the app may open on a **different workspace** than the one you are on — which also reads as "it didn't open". `wmctrl -lG | grep MovingOut` settles it in one line.
+**The `.desktop` entry passes `--ozone-platform=x11 --no-sandbox`, and both are load-bearing.** X11 because Chromium's Wayland backend segfaults on this compositor. `--no-sandbox` because Chromium's setuid sandbox requires `chrome-sandbox` to be root-owned with mode 4755, which needs sudo — and rather than run unsandboxed it **aborts**, so the app dies instantly with no window and no message anywhere except the journal. Restore the sandbox properly with:
+
+```bash
+sudo chown root:root ~/.local/opt/movingout/chrome-sandbox && sudo chmod 4755 ~/.local/opt/movingout/chrome-sandbox
+```
+
+…and then drop `--no-sandbox` from the entry. Note this has to be redone after every reinstall, because the copy brings a fresh `chrome-sandbox`.
+
+**"Clicking the app does nothing" has had three separate causes so far** — a FUSE-less AppImage, a window on another workspace, and the sandbox abort. Start with the journal, which names the cause directly and takes one command:
+
+```bash
+journalctl --user --since "-1 hour" | grep -i movingout
+```
+
+Do not diagnose it by launching the binary from a terminal. A shell inside VSCode inherits snap confinement that permits unprivileged user namespaces, so Chromium finds a sandbox there and starts fine — the failure exists **only** in the session's launch context, and testing from the wrong one produces a confident, wrong all-clear.
 
 **The native builds need two toolchains that are not on `PATH`** — same situation as Node, below:
 

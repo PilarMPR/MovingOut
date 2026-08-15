@@ -18,6 +18,25 @@ Notably **not** yet earned after the first build: IND002, IND003, IND005, IND006
 
 ## Entries
 
+## 2026-08-15 · "Clicking the app does nothing", take three: the Chromium SUID sandbox · no ID
+
+**What happened.** After the app was installed to `~/.local/opt/movingout/` and verified working, clicking it in the GNOME menu still did nothing. No window, no error, no visible process. It had by then been reported three times, and this was the third *distinct* cause behind the identical symptom — the earlier two being a FUSE-less AppImage and a window landing on another workspace.
+
+**The cause, in one line from the journal:**
+
+```
+FATAL:setuid_sandbox_host.cc:166] The SUID sandbox helper binary was found, but is
+not configured correctly. Rather than run without sandboxing I'm aborting now.
+```
+
+Chromium requires `chrome-sandbox` to be root-owned with mode 4755, and **aborts by design** rather than run unsandboxed. We installed without sudo, so it never was. The launcher now passes `--no-sandbox`; the sudo two-liner that restores the sandbox properly is recorded in `CLAUDE.md` next to the install instructions.
+
+**The part worth keeping: every test I ran was from a context where the bug could not occur.** Direct launch, minimal `env -i`, `gio launch` through the same `GAppInfo` API GNOME uses, even `systemd-run --user --scope` to imitate gnome-shell's launch — *all four passed*, repeatedly, while the user's clicks failed every time. The reason is that this shell runs inside VSCode's snap confinement, whose AppArmor profile permits unprivileged user namespaces, so Chromium silently used the **namespace** sandbox and never touched the setuid path. Launched from gnome-shell that fallback is denied, it reaches the setuid helper, and dies. **The launch context is part of the system under test.** Reproducing "how it is started" is not a detail you can approximate — four escalating approximations all produced a confident all-clear for a bug that was failing 100% of the time three feet away.
+
+**And the answer was sitting in the journal the entire time.** `journalctl --user | grep -i movingout` printed the exact cause, with the exact remedy, timestamped to the user's own clicks — including two failures from *before* this investigation started. It was the last thing checked and should have been the first. For anything launched by the desktop environment, the session journal is the primary source; the terminal is a simulation of it, and this time a misleading one.
+
+**Lesson.** *One symptom, three causes, and the symptom is uninformative.* "It doesn't open" says only that no window appeared, which is the shared output of a missing runtime dependency, a window on another workspace, and a security abort. Each needed a different instrument — `ldd`/FUSE, `wmctrl`, the journal — and none of them was the one I reached for first. When a report repeats after a fix, the prior should be that it is a **new** cause, not that the fix failed.
+
 ## 2026-08-15 · "The desktop app won't open" — it was opening the whole time · no ID
 
 **What happened.** Reported as: works on the phone, will not open on the laptop. The suggested fix was a laptop-specific branch. There was no bug in the app, and the branch would have forked a working codebase away from the one thing that was actually fine.
