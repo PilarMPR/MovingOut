@@ -16,6 +16,7 @@ import type {
   Frequency,
   IsoDate,
   Priority,
+  Purchase,
   PurchaseProject,
   Revision,
   SavedState,
@@ -40,8 +41,13 @@ import { defaultCategories, defaultRooms } from './taxonomy';
 import { today } from './history';
 
 const KEY = 'movingout.state';
-/** v3 added the editable `categories` / `rooms` lists and stopped seeding scenarios. */
-const SCHEMA_VERSION = 3;
+/**
+ * v3 added the editable `categories` / `rooms` lists and stopped seeding
+ * scenarios; v4 added the shopping log, `Scenario.purchases`. Both read
+ * anything older: a payload with no `purchases` key opens with an empty log,
+ * which is exactly what it meant.
+ */
+const SCHEMA_VERSION = 4;
 
 /** ~a third of income is the usual rule of thumb; it is editable in Ajustes. */
 const DEFAULT_MAX_RENT_PERCENT = 32;
@@ -67,6 +73,7 @@ export function newScenario(name: string): Scenario {
     buffer: { targetCents: 0 },
     entries: [],
     projects: [],
+    purchases: [],
   };
 }
 
@@ -224,6 +231,27 @@ function ensureEntry(raw: unknown, createdAt: IsoDate, known: KnownIds): Entry {
   return entry;
 }
 
+/**
+ * One logged purchase. It is checked against the live category list like an
+ * Entry is — a purchase filed under a category binned on another device has to
+ * land in Otros rather than vanish from the breakdown it belongs in.
+ *
+ * No `hasAmount` to backfill: on a Purchase, zero *is* the blank (types.ts).
+ */
+function ensurePurchase(raw: unknown, fallbackDate: IsoDate, known: KnownIds): Purchase {
+  const r = isRecord(raw) ? raw : {};
+  const purchase: Purchase = {
+    id: str(r.id, newId('g')),
+    date: date(r.date, fallbackDate),
+    product: str(r.product, ''),
+    amountCents: cents(r.amountCents, 0),
+    category: knownId(r.category, known.categories, FALLBACK_CATEGORY),
+  };
+  const note = optionalStr(r.note);
+  if (note !== undefined) purchase.note = note;
+  return purchase;
+}
+
 function ensureProject(raw: unknown, createdAt: IsoDate): PurchaseProject {
   const r = isRecord(raw) ? raw : {};
   const project: PurchaseProject = {
@@ -255,6 +283,7 @@ function ensureScenario(raw: unknown, known: KnownIds): Scenario {
     buffer: ensureBuffer(r.buffer),
     entries: list(r.entries).map((entry) => ensureEntry(entry, createdAt, known)),
     projects: list(r.projects).map((project) => ensureProject(project, createdAt)),
+    purchases: list(r.purchases).map((purchase) => ensurePurchase(purchase, createdAt, known)),
   };
   const note = optionalStr(r.note);
   if (note !== undefined) scenario.note = note;

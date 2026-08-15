@@ -133,6 +133,43 @@ export interface Entry {
   shouldNotPay?: boolean;
 }
 
+/**
+ * One thing actually bought, on one day — the shopping log.
+ *
+ * Deliberately *not* an Entry, and the one place in the app that records money
+ * already spent rather than money someone expects to spend. An Entry answers
+ * "what will this cost me every month"; a Purchase answers "what did I pay for
+ * milk on Tuesday". Giving it a frequency, a priority or a status would be
+ * modelling a receipt as a forecast — none of the three mean anything once the
+ * money has left the account, and `history` least of all: a price you paid is
+ * not an estimate you can revise.
+ *
+ * What the two share is the category axis, because that is what lets the log
+ * land in the same breakdown as the estimates it is measured against.
+ */
+export interface Purchase {
+  id: string;
+  /** The day it was bought. Local calendar day, and what the window is measured over. */
+  date: IsoDate;
+  /** What was bought: "Leche", "Detergente". Grouped by name in the rollup. */
+  product: string;
+  /**
+   * Always positive, like every other amount (IND005). Purchases are salidas by
+   * definition, so there is no `direction` to take a sign from.
+   *
+   * There is no `hasAmount` here on purpose. A blank estimate is a normal,
+   * lasting state — the checklist ships without prices — but a blank *purchase*
+   * only exists for the second between adding the row and typing what you paid,
+   * and zero is the one amount a real purchase cannot be. So zero reads as "not
+   * typed yet", is rendered as the same dashed blank an Entry gets, and is
+   * counted as missing rather than as a free lunch.
+   */
+  amountCents: Cents;
+  /** A live id from `SavedState.categories`, exactly as on an Entry. */
+  category: Category;
+  note?: string;
+}
+
 /** A named multi-item goal — "Amueblar salón" — with its own budget and date. */
 export interface PurchaseProject {
   id: string;
@@ -168,6 +205,13 @@ export interface Scenario {
   buffer: Buffer;
   entries: Entry[];
   projects: PurchaseProject[];
+  /**
+   * The shopping log. Per scenario rather than app-wide, unlike the two
+   * taxonomies: what you spend on the weekly shop is part of what living in
+   * *this* flat costs, and Comparar is allowed to answer "what if I shopped
+   * differently" with two scenarios rather than one.
+   */
+  purchases: Purchase[];
   note?: string;
 }
 

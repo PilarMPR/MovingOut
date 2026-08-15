@@ -15,11 +15,14 @@
  *     still visible in the breakdown
  *   · a blank amount is not a zero — it is counted as missing coverage and
  *     printed alongside every total
+ *   · the shopping log is a second source of salidas, and it is *added* to the
+ *     estimates rather than reconciled against them — see `withLogged()`
  */
-import type { Cents, Category, Entry, Room, Scenario, Settings } from '../types';
+import type { Cents, Category, Entry, IsoDate, Room, Scenario, Settings } from '../types';
 import { FALLBACK_ROOM } from '../types';
 import { isRecurring, toMonthly } from './frequency';
 import { percentOf, ratioPercent } from './money';
+import { byCategory, loggedSpend, overlaps, type CategorySpend, type LoggedSpend, type Overlap } from './purchases';
 
 // ── which entries count where ────────────────────────────────────────────
 
@@ -87,6 +90,25 @@ export function monthlyTotals(entries: Entry[]): MonthlyTotals {
     }
   }
   return { inCents, outCents, balanceCents: inCents - outCents, inCount, outCount };
+}
+
+/**
+ * The estimates, plus what the shopping log actually costs per month.
+ *
+ * The log is a salida like any other and it *adds*: nothing here inspects the
+ * estimates to see whether one of them already claims to cover the same food.
+ * That is a deliberate refusal — the app does not get to decide that the row
+ * you typed is redundant — and the price of it is that a live "Compra semanal"
+ * estimate and a logged weekly shop will both count. `overlaps()` is what finds
+ * that case and the UI is what says so out loud.
+ *
+ * The counts are left alone: they say how many *conceptos* fed each side, and
+ * the log is not a concepto. Its own count is reported beside its own figure.
+ */
+export function withLogged(totals: MonthlyTotals, loggedMonthlyCents: Cents): MonthlyTotals {
+  if (loggedMonthlyCents === 0) return totals;
+  const outCents = totals.outCents + loggedMonthlyCents;
+  return { ...totals, outCents, balanceCents: totals.inCents - outCents };
 }
 
 // ── the upfront ledger ───────────────────────────────────────────────────
@@ -203,40 +225,67 @@ export interface CategorySlice {
   missingCount: number;
   /** Every concepto here is paused: the row shows `pausado`, not a bar. */
   allPaused: boolean;
+  /** How much of the bar came from the shopping log rather than an estimate. */
+  loggedCents: Cents;
 }
 
-/** Where the money goes. Salidas only — entradas are not a "share of" anything. */
-export function breakdown(entries: Entry[]): CategorySlice[] {
-  const totals = new Map<Category, { cents: Cents; missing: number; active: number; rows: number }>();
+/**
+ * Where the money goes. Salidas only — entradas are not a "share of" anything.
+ *
+ * `logged` is the shopping log rolled up by category (`purchases.byCategory`).
+ * It goes into the same bars rather than into one of its own, because the
+ * question the panel answers is where the money went, and the answer does not
+ * depend on whether a figure was estimated or observed. It does count toward
+ * the denominator, so the shares still add to a hundred.
+ */
+export function breakdown(entries: Entry[], logged: readonly CategorySpend[] = []): CategorySlice[] {
+  const totals = new Map<Category, { cents: Cents; missing: number; active: number; rows: number; logged: Cents }>();
+  const slot = (category: Category) =>
+    totals.get(category) ?? { cents: 0, missing: 0, active: 0, rows: 0, logged: 0 };
 
   for (const entry of entries) {
     if (entry.direction !== 'salida' || entry.shouldNotPay === true) continue;
     if (!isRecurring(entry.frequency)) continue;
-    const slot = totals.get(entry.category) ?? { cents: 0, missing: 0, active: 0, rows: 0 };
-    slot.rows += 1;
+    const found = slot(entry.category);
+    found.rows += 1;
     if (entry.status === 'pausado') {
-      totals.set(entry.category, slot);
+      totals.set(entry.category, found);
       continue;
     }
-    slot.active += 1;
+    found.active += 1;
     if (!entry.hasAmount) {
-      slot.missing += 1;
+      found.missing += 1;
     } else {
       const monthly = toMonthly(entry.amountCents, entry.frequency);
-      if (monthly !== null) slot.cents += monthly;
+      if (monthly !== null) found.cents += monthly;
     }
-    totals.set(entry.category, slot);
+    totals.set(entry.category, found);
   }
 
-  const outCents = monthlyTotals(entries).outCents;
+  for (const line of logged) {
+    const found = slot(line.category);
+    found.cents += line.monthlyCents;
+    found.logged += line.monthlyCents;
+    // Logged spending is by definition not paused: it already happened. A
+    // category holding nothing but paused estimates plus a real shop is an
+    // active category, and its bar has to draw.
+    found.rows += line.count;
+    found.active += line.count;
+    totals.set(line.category, found);
+  }
+
+  let outCents = monthlyTotals(entries).outCents;
+  for (const line of logged) outCents += line.monthlyCents;
+
   const slices: CategorySlice[] = [];
-  for (const [category, slot] of totals) {
+  for (const [category, found] of totals) {
     slices.push({
       category,
-      monthlyCents: slot.cents,
-      percent: ratioPercent(slot.cents, outCents),
-      missingCount: slot.missing,
-      allPaused: slot.active === 0 && slot.rows > 0,
+      monthlyCents: found.cents,
+      percent: ratioPercent(found.cents, outCents),
+      missingCount: found.missing,
+      allPaused: found.active === 0 && found.rows > 0,
+      loggedCents: found.logged,
     });
   }
 
@@ -372,13 +421,31 @@ export interface Derived {
   /** Balance as a share of entradas. `null` when nothing comes in. */
   balanceShareOfIn: number | null;
   sixth: SixthKpi;
+  /** The shopping log: what it totals, and what it costs per month. */
+  spend: LoggedSpend;
+  /** Categories where the log and a live estimate may be counting the same money. */
+  overlaps: Overlap[];
 }
 
-export function derive(scenario: Scenario, settings: Settings, furnitureLabel: string): Derived {
+/**
+ * `todayDate` is a parameter and not a `new Date()` for the same reason
+ * `projectProgress` takes one: the log's monthly figure is an average over the
+ * days since the first purchase, so the answer depends on what day it is, and
+ * `src/lib` is not allowed to know that on its own. It also means the figure
+ * can be tested at all.
+ */
+export function derive(
+  scenario: Scenario,
+  settings: Settings,
+  furnitureLabel: string,
+  todayDate: IsoDate,
+): Derived {
   const costes = scenario.entries.filter((entry) => !isFurniture(entry));
   const furniture = scenario.entries.filter(isFurniture);
 
-  const totals = monthlyTotals(scenario.entries);
+  const spend = loggedSpend(scenario.purchases, todayDate);
+  const logged = byCategory(scenario.purchases, todayDate);
+  const totals = withLogged(monthlyTotals(scenario.entries), spend.monthlyCents);
   const ledger = upfront(scenario.entries, furnitureLabel);
   const savingsAfterUpfrontCents = scenario.savingsCents - ledger.cashCents;
   const kind = verdict(totals);
@@ -412,7 +479,7 @@ export function derive(scenario: Scenario, settings: Settings, furnitureLabel: s
     furniture,
     totals,
     upfront: ledger,
-    breakdown: breakdown(scenario.entries),
+    breakdown: breakdown(scenario.entries, logged),
     coverage: coverage(costes),
     savingsAfterUpfrontCents,
     runwayMonths,
@@ -423,6 +490,8 @@ export function derive(scenario: Scenario, settings: Settings, furnitureLabel: s
     shortfallCents: deficitCents,
     balanceShareOfIn: ratioPercent(totals.balanceCents, totals.inCents),
     sixth,
+    spend,
+    overlaps: overlaps(scenario.entries, scenario.purchases, todayDate),
   };
 }
 

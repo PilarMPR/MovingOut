@@ -40,6 +40,7 @@ export const es = {
   tabs: {
     resumen: 'Resumen',
     costes: 'Costes',
+    compras: 'Compras',
     muebles: 'Muebles',
     proyectos: 'Proyectos',
     historial: 'Historial',
@@ -51,6 +52,7 @@ export const es = {
   tabsShort: {
     resumen: 'Resumen',
     costes: 'Costes',
+    compras: 'Compras',
     muebles: 'Muebles',
     proyectos: 'Proyec.',
     historial: 'Hist.',
@@ -168,6 +170,14 @@ export const es = {
     guideNoIncome: 'Sin entradas registradas no hay referencia que dar.',
     barsPanel: 'A dónde va el dinero',
     barsPaused: 'pausado',
+    /** The shopping log inside the bars: same axis, different kind of number. */
+    barsLoggedPrefix: 'Incluye',
+    barsLoggedSuffix: 'al mes de compra registrada, que es gasto real y no estimación.',
+    barsOverlapPrefix: 'Cuidado:',
+    barsOverlapSuffix:
+      'tiene compras apuntadas y además conceptos activos que estiman lo mismo. Se está contando dos veces — se arregla en Compras.',
+    barsOverlapMany: 'Hay categorías con compras apuntadas y conceptos activos que estiman lo mismo. Se está contando dos veces — se arregla en Compras.',
+    outSubLogged: 'de compra registrada',
     upfrontPanel: 'Dinero al entrar',
     ledgerUpfront: 'Necesitas tener',
     ledgerSpend: 'Gasto real',
@@ -257,6 +267,73 @@ export const es = {
     filters: 'Filtros',
   },
 
+  /**
+   * The shopping log. The one screen in the app about money already spent, so
+   * the copy is careful never to call a logged purchase an "estimación" — the
+   * whole point of the tab is that these are not estimates.
+   */
+  compras: {
+    kpiMonthly: 'Equivalente mensual',
+    kpiMonthlySub: 'media diaria ×',
+    kpiMonthlyProvisional: 'provisional — menos de un mes registrado',
+    kpiMonthlyEmpty: 'apunta la primera compra y esto se calcula solo',
+    kpiPerDay: 'Media al día',
+    kpiPerDaySubPrefix: 'días registrados desde el',
+    kpiPerDayEmpty: 'sin registro todavía',
+    kpiTotal: 'Total registrado',
+    kpiTotalSub: 'compras',
+    kpiTotalSubOne: 'compra',
+    kpiTotalProducts: 'productos distintos',
+    kpiTotalProduct: 'producto',
+    kpiThisMonth: 'Este mes',
+    kpiThisMonthSub: 'lo que llevas gastado en el mes en curso',
+    kpiMissingSuffix: 'sin importe',
+
+    panel: 'Registro de compras',
+    panelProducts: 'Por producto',
+    panelProductsNote: 'Lo que más se lleva',
+    filterView: 'Ver',
+    filterAll: 'Todo',
+    filterMonth: 'Este mes',
+    colDate: 'Fecha',
+    colProduct: 'Producto',
+    colCategory: 'Categoría',
+    colAmount: 'Importe',
+    colNote: 'Nota',
+    colTimes: 'Veces',
+    colTotal: 'Total',
+    colAverage: 'Media',
+    colMonthly: 'Equiv. mensual',
+    colLast: 'Última',
+    colShare: 'Parte',
+    empty: '— —',
+    notePlaceholder: '—',
+    add: '+ Apuntar compra',
+    newProduct: 'Producto',
+    delete: 'Borrar compra',
+    emptyLog:
+      'Todavía no has apuntado ninguna compra. Cada línea es un producto y lo que te costó; la media diaria de todo lo apuntado entra en las salidas del mes.',
+    emptyMonth: 'Ninguna compra apuntada este mes.',
+    emptyProducts: 'Aquí saldrá en qué se te va la compra en cuanto apuntes algo.',
+    totalRow: 'Total del registro',
+
+    /** The one thing that stops the weekly shop being counted twice. */
+    overlapLabel: 'Ojo',
+    overlapPrefix: 'Estás apuntando compras en',
+    overlapMiddle: 'y además tienes',
+    overlapEstimateOne: 'concepto activo',
+    overlapEstimateMany: 'conceptos activos',
+    overlapSuffix: 'en la misma categoría. Las dos cifras cuentan, así que ese gasto se está sumando dos veces.',
+    overlapCompare: 'registrado frente a estimado',
+    overlapButton: 'Pausar las estimaciones',
+    overlapButtonNote:
+      'Pausar no borra: el concepto se queda a la vista, deja de contar, y vuelve a contar cuando lo reactives.',
+
+    note: 'Esto sí es un registro de gastos, y es el único de la app. La media diaria de todo lo apuntado se escala a un mes y se suma a las salidas; no sustituye a ninguna estimación.',
+    noteShort: 'Gasto real, no estimación',
+    windowNote: 'La media se toma desde la primera compra hasta hoy, así que los días que no compras nada también cuentan.',
+  },
+
   muebles: {
     heroLabel: 'Mínimo real para entrar a vivir',
     heroSubEssential: 'sólo lo esencial pendiente de comprar',
@@ -341,8 +418,8 @@ export const es = {
     noChange: 'sin cambio',
     empty:
       'Todavía no hay revisiones. Cada vez que cambies un importe se apunta aquí, y así se ve si el piso se ha encarecido desde que lo planeaste.',
-    note: 'Esto es un registro de estimaciones, no de gastos. No hay que apuntar nada a diario.',
-    noteShort: 'No es un registro de gastos',
+    note: 'Esto es un registro de estimaciones, no de gastos: lo que has comprado de verdad va en Compras. Aquí no hay que apuntar nada a diario.',
+    noteShort: 'Estimaciones, no gastos',
   },
 
   ajustes: {

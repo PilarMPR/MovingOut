@@ -36,6 +36,7 @@ The payoff is that `src/lib/` is trivially testable — plain in, plain out, no 
 | `lib/money.ts` | integer-cent arithmetic, `Intl` formatting, and `parseAmount` |
 | `lib/frequency.ts` | `toMonthly()` and the `÷2` / `÷12` annotation. The only place a bimonthly bill becomes a monthly figure |
 | `lib/history.ts` | append-only revisions, per-entry deltas, the cross-item log, the Historial KPI summary |
+| `lib/purchases.ts` | the shopping log: the averaging window, the monthly rate, the product and category rollups, and `overlaps()` — the double-count guard |
 | `lib/derive.ts` | every figure on every screen: totals, the upfront ledger, breakdown, coverage, drift, verdict, the sixth KPI, furniture totals, project progress, scenario comparison |
 | `lib/storage.ts` | load, save, `DEFAULTS`, `ensureShape`, JSON export/import |
 | `lib/seed.ts` | `docs/COST-CHECKLIST.md` turned into entries, amounts blank |
@@ -84,7 +85,30 @@ All of them come out of `derive.ts`. The ones with a rule behind them:
 
 Revisions are committed on blur, not on keystroke — `EditableAmount` holds a draft in local state and calls `store.reviseAmount` once. A revision per keypress would turn the changelog into noise. Clearing a cell is not a revision: it sets `hasAmount: false` and leaves the record of what there was.
 
-This is a log of **estimates**, not of spending. There is deliberately no daily expense logging, and Historial must never grow into a transactions feed — the app has to stay useful without daily upkeep.
+This is a log of **estimates**, not of spending, and Historial must never grow into a transactions feed.
+
+---
+
+## The shopping log
+
+`Scenario.purchases` holds `Purchase` rows — `{ id, date, product, amountCents, category, note? }` — and `lib/purchases.ts` turns them into a monthly figure that `derive()` adds to salidas. It is the only part of the app that records money already spent.
+
+**It is not an `Entry`.** Four of `Entry`'s fields mean nothing on a receipt (frequency, priority, status, history) and the one that would be reused wrongly is `history`: correcting a typo in what you paid is not a revision of an estimate, and putting it in the append-only log would dilute the thing `IND002` protects. `Purchase` shares only the category axis, which is precisely the field that had to be shared for the log to reach the breakdown.
+
+**The monthly rate is a daily average scaled to a month:**
+
+```
+monthly = round(total × 1461 / (days × 48))     // 1461/48 = 365,25/12 = 30,4375
+days    = first purchase → today, inclusive
+```
+
+Held as a fraction so nothing multiplies money by a decimal, and rounded exactly once (`IND001`). The window ends at **today**, not at the last purchase, so stretches of not buying anything pull the average down instead of vanishing from it. Under 30 days the figure is flagged `provisional`.
+
+**`derive()` therefore takes `todayDate`.** `lib/` has no clock — the layering rule extends to time, for the same reason it extends to storage: a function that reads `new Date()` cannot be tested and cannot be reasoned about. `store.todayDate` reads it once per mount and hands the same value to every screen.
+
+**`overlaps()` is load-bearing.** The log adds to salidas and reconciles nothing, so an estimate covering the same category counts alongside it. That function finds the case; the Compras tab draws the warning and the button that pauses the estimates; Resumen carries the short form under the breakdown bars. **The correctness of the monthly total depends on a function whose only output is a warning** — its tests include the negative cases (paused, blank, `shouldNotPay`, `único`, `entrada`, furniture) because a guard that over-reports gets ignored and one that under-reports is worse than none.
+
+**Zero is the blank**, and there is no `hasAmount` — the argument is in `types.ts`, on the field.
 
 ---
 
@@ -99,7 +123,9 @@ Two implementation notes that exist to satisfy the static check, and will bite w
 - `DEFAULTS` is a concise arrow body returning an object literal, `(...) => ({ … })`. `check_ind003` extracts the depth-1 keys by walking from the first `{`, so a `function` form would bury them one brace deeper and silently disable the parity check.
 - The module doc comment does not write `DEFAULTS()` or `ensureShape()` in call syntax, because that check does not skip comments and will match the prose instead of the code.
 
-`version` is `2`. Version 1 predates `Entry.hasAmount`; the backfill reads a saved amount above zero as a real estimate and a saved zero as a blank.
+`version` is `4`. Version 1 predates `Entry.hasAmount`; the backfill reads a saved amount above zero as a real estimate and a saved zero as a blank. Version 3 added the editable `categories` / `rooms` lists, and version 4 `Scenario.purchases` — an absent key there means an empty log, which is exactly what its absence meant.
+
+**The IND003 parity check does not reach that far down.** It walks the depth-1 keys of `DEFAULTS()`, so it guards `categories` and `settings` and says nothing about a new field on a `Scenario`, an `Entry` or a `Purchase`. `purchases` shipped its backfill because the tests failed loudly, not because the checker spoke. Anything nested is guarded by `storage.test.ts` or by nothing.
 
 ---
 

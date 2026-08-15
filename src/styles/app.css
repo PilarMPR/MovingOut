@@ -172,6 +172,10 @@ table{width:100%;border-collapse:separate;border-spacing:0;}
 .tbl-costes{min-width:1080px;}
 .tbl-rooms{min-width:760px;}
 .tbl-hist{min-width:760px;}
+/* The shopping log is five columns wide and stays readable on a phone in
+   landscape; the product rollup is all figures, so it packs tighter. */
+.tbl-compras{min-width:720px;}
+.tbl-prod{min-width:620px;}
 th{font-family:var(--mono);font-weight:500;font-size:8px;letter-spacing:.15em;
   text-transform:uppercase;color:var(--muted);background:var(--card);
   border-bottom:1px solid var(--border-2);padding:8px 5px;text-align:left;white-space:nowrap;}
@@ -214,6 +218,14 @@ tr.tot:hover td{background:var(--sunk);}
 .tbl-rooms .amount-col{min-width:110px;}
 .tbl-hist th:first-child,.tbl-hist td:first-child{padding-left:11px;}
 .tbl-hist th:last-child,.tbl-hist td:last-child{width:100%;padding-right:11px;}
+.tbl-compras th:first-child,.tbl-compras td:first-child{padding-left:11px;min-width:130px;}
+.tbl-compras th:nth-child(2),.tbl-compras td:nth-child(2){min-width:170px;}
+/* The amount needs room for "1.234,56 €" or the input clips its own value —
+   there is no column of totals to read it off instead. */
+.tbl-compras th:nth-child(4),.tbl-compras td:nth-child(4){min-width:130px;}
+.tbl-compras th:last-child,.tbl-compras td:last-child{width:100%;min-width:150px;padding-right:11px;}
+.tbl-prod th:first-child,.tbl-prod td:first-child{padding-left:11px;min-width:170px;}
+.tbl-prod th:last-child,.tbl-prod td:last-child{width:100%;padding-right:11px;}
 
 /* The concepto cell: a direction dot, then the name. */
 .concepto{display:flex;align-items:center;gap:5px;min-width:0;}
@@ -229,6 +241,11 @@ tr.tot:hover td{background:var(--sunk);}
 .ie.r{text-align:right;font-weight:600;font-size:12px;font-variant-numeric:tabular-nums;}
 .ie.empty{color:var(--faint);background:var(--sunk);border-style:dashed;border-color:var(--dash);}
 .ie.auto{width:auto;}
+/* The date cell in the shopping log. Native picker, and it renders in the
+   *browser's* locale rather than the document's — a known soft spot, kept
+   because a phone keyboard for a date is worse than a wrong separator. */
+.ie.date{width:auto;font-size:11px;color:var(--muted);}
+.ie.date:focus{color:var(--text);}
 /* The plain enum select — no chrome until you touch it. */
 select.ie{font-weight:400;font-size:9.5px;letter-spacing:.04em;color:var(--muted);padding:4px 4px;}
 select.ie.strong{color:var(--text);font-weight:600;}

@@ -237,6 +237,10 @@ export function templateScenario(name: string): Scenario {
     buffer: { targetCents: templateBufferTargetCents() },
     entries: ROWS.map((row) => toEntry(row, date)),
     projects: [],
+    // The sheet is a forecast, and it has no receipts behind it. The shopping
+    // log starts empty here for the same reason it starts empty everywhere:
+    // it can only ever be filled in by something that actually happened.
+    purchases: [],
   };
 }
 

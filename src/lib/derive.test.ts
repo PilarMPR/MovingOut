@@ -13,9 +13,11 @@ import {
   verdict,
 } from './derive';
 import { pushRevision } from './history';
+import { byCategory } from './purchases';
 import type { Entry, Scenario, Settings } from '../types';
 
 const MUEBLES = 'Muebles esenciales';
+const TODAY = '2026-08-15';
 const SETTINGS: Settings = { maxRentPercent: 32 };
 
 let n = 0;
@@ -51,6 +53,7 @@ function scenario(entries: Entry[], patch: Partial<Scenario> = {}): Scenario {
     buffer: { targetCents: 0 },
     entries,
     projects: [],
+    purchases: [],
     ...patch,
   };
 }
@@ -204,6 +207,7 @@ describe('derive', () => {
       scenario([...base, priced(100000, { label: 'Estudio' })], { savingsCents: 640000 }),
       SETTINGS,
       MUEBLES,
+      TODAY,
     );
     expect(poor.verdict).toBe('falta');
     expect(poor.sixth.kind).toBe('runway');
@@ -211,14 +215,14 @@ describe('derive', () => {
   });
 
   it('does not report a buffer as covered when no target was ever set', () => {
-    const fresh = derive(scenario(base), SETTINGS, MUEBLES);
+    const fresh = derive(scenario(base), SETTINGS, MUEBLES, TODAY);
     if (fresh.sixth.kind !== 'buffer') throw new Error('expected the buffer KPI');
     expect(fresh.sixth.targetCents).toBe(0);
     expect(fresh.sixth.covered).toBe(false);
   });
 
   it('has no branch that can render an infinite runway', () => {
-    const rich = derive(scenario(base, { savingsCents: 640000 }), SETTINGS, MUEBLES);
+    const rich = derive(scenario(base, { savingsCents: 640000 }), SETTINGS, MUEBLES, TODAY);
     expect(rich.verdict).toBe('ok');
     expect(rich.sixth.kind).toBe('buffer');
     // The positive branch reports the buffer; runway is simply not asked.
@@ -233,6 +237,7 @@ describe('derive', () => {
       ]),
       SETTINGS,
       MUEBLES,
+      TODAY,
     );
     expect(tight.verdict).toBe('justo');
     if (tight.sixth.kind !== 'margin') throw new Error('expected the margin KPI');
@@ -241,12 +246,12 @@ describe('derive', () => {
 
   it('subtracts the whole upfront from savings, deposit included', () => {
     // The fianza comes back eventually, but it is not available next month.
-    const d = derive(scenario(base, { savingsCents: 640000 }), SETTINGS, MUEBLES);
+    const d = derive(scenario(base, { savingsCents: 640000 }), SETTINGS, MUEBLES, TODAY);
     expect(d.savingsAfterUpfrontCents).toBe(640000 - 33000);
   });
 
   it('treats the max-rent guideline as a share of income, nothing more', () => {
-    const d = derive(scenario(base), SETTINGS, MUEBLES);
+    const d = derive(scenario(base), SETTINGS, MUEBLES, TODAY);
     expect(d.maxAffordableRentCents).toBe(Math.round(73000 * 0.32));
   });
 
@@ -255,6 +260,7 @@ describe('derive', () => {
       scenario([...base, priced(18000, { room: 'dormitorio', frequency: 'unico', status: 'pendiente' })]),
       SETTINGS,
       MUEBLES,
+      TODAY,
     );
     expect(d.furniture).toHaveLength(1);
     expect(d.costes).toHaveLength(base.length);
@@ -307,6 +313,70 @@ describe('breakdown', () => {
     expect(slices.find((s) => s.category === 'impuestos')?.missingCount).toBe(1);
     // Paused categories sort last so they never head the chart.
     expect(slices[slices.length - 1].category).toBe('ocio');
+  });
+});
+
+describe('the shopping log in the totals', () => {
+  const shop = (date: string, amountCents: number, category = 'alimentacion') => ({
+    id: `g${date}${amountCents}`,
+    date,
+    product: 'Compra',
+    amountCents,
+    category,
+  });
+
+  it('adds to salidas rather than replacing an estimate', () => {
+    const entries = [
+      priced(73000, { direction: 'entrada', category: 'ingresos' }),
+      priced(33000, { category: 'vivienda' }),
+    ];
+    const purchases = [shop('2026-08-01', 4520), shop('2026-08-08', 3810)];
+    const d = derive(scenario(entries, { purchases }), SETTINGS, MUEBLES, TODAY);
+
+    const plain = monthlyTotals(entries);
+    expect(d.spend.totalCents).toBe(8330);
+    expect(d.totals.outCents).toBe(plain.outCents + d.spend.monthlyCents);
+    expect(d.totals.balanceCents).toBe(d.totals.inCents - d.totals.outCents);
+    // The counts stay a count of conceptos: the log is not one.
+    expect(d.totals.outCount).toBe(plain.outCount);
+  });
+
+  it('leaves the totals untouched when nothing is logged', () => {
+    const entries = [priced(33000)];
+    expect(derive(scenario(entries), SETTINGS, MUEBLES, TODAY).totals).toEqual(monthlyTotals(entries));
+  });
+
+  it('puts logged spending in the breakdown, on the same axis and in the denominator', () => {
+    const purchases = [shop('2026-08-01', 4520, 'alimentacion')];
+    const logged = byCategory(purchases, TODAY);
+    const slices = breakdown([priced(33000, { category: 'vivienda' })], logged);
+
+    const food = slices.find((s) => s.category === 'alimentacion');
+    expect(food?.loggedCents).toBe(logged[0].monthlyCents);
+    expect(food?.monthlyCents).toBe(logged[0].monthlyCents);
+    // Shares still add up, which they would not if the log were left out of
+    // the denominator.
+    const total = slices.reduce((sum, s) => sum + (s.percent ?? 0), 0);
+    expect(total).toBeCloseTo(100, 6);
+  });
+
+  it('draws a bar for a category whose only estimate is paused but which has a real shop', () => {
+    const logged = byCategory([shop('2026-08-01', 4520, 'ocio')], TODAY);
+    const slices = breakdown([priced(2900, { category: 'ocio', status: 'pausado' })], logged);
+    expect(slices.find((s) => s.category === 'ocio')?.allPaused).toBe(false);
+  });
+
+  it('carries the overlap warning, so nothing is counted twice in silence', () => {
+    const d = derive(
+      scenario([priced(20000, { category: 'alimentacion', label: 'Compra semanal' })], {
+        purchases: [shop('2026-08-01', 4520)],
+      }),
+      SETTINGS,
+      MUEBLES,
+      TODAY,
+    );
+    expect(d.overlaps).toHaveLength(1);
+    expect(d.overlaps[0].category).toBe('alimentacion');
   });
 });
 

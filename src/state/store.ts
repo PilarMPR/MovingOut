@@ -7,7 +7,16 @@
  * `history`, which is append-only (IND002).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Cents, Entry, PurchaseProject, SavedState, Scenario, Settings } from '../types';
+import type {
+  Cents,
+  Entry,
+  IsoDate,
+  Purchase,
+  PurchaseProject,
+  SavedState,
+  Scenario,
+  Settings,
+} from '../types';
 import { FALLBACK_CATEGORY, FALLBACK_ROOM } from '../types';
 import { derive, type Derived } from '../lib/derive';
 import { pushRevision, today } from '../lib/history';
@@ -20,6 +29,7 @@ import {
   addTaxon,
   mergeTaxa,
   refileCategory,
+  refilePurchaseCategory,
   refileRoom,
   removeTaxon,
   renameTaxon,
@@ -30,6 +40,13 @@ export interface Store {
   state: SavedState;
   scenario: Scenario;
   derived: Derived;
+  /**
+   * Today, read once per mount. Shared rather than re-read per component so
+   * every screen measures the shopping log's window against the same day —
+   * two tabs disagreeing about what "today" is would be a genuinely nasty bug
+   * to find at one minute past midnight.
+   */
+  todayDate: IsoDate;
 
   /** Everything about a scenario except its name — see `renameScenario`. */
   patchScenario: (patch: Omit<Partial<Scenario>, 'name'>) => void;
@@ -51,6 +68,22 @@ export interface Store {
   /** Commits an estimate. Pushes a revision only when something actually changed. */
   reviseAmount: (id: string, amountCents: Cents | null) => void;
   removeEntry: (id: string) => void;
+  /**
+   * Pauses several conceptos at once. Exists for one job: the shopping log and
+   * an estimate covering the same category both count, and this is the button
+   * that resolves it without making the user hunt down four rows in Costes.
+   */
+  pauseEntries: (ids: string[]) => void;
+
+  /**
+   * The shopping log. A purchase is not an Entry and does not go through
+   * `reviseAmount`: correcting what you paid for milk is fixing a typo, not
+   * revising a forecast, so there is no history to append to (IND002 does not
+   * apply — there is nothing here that is a changelog).
+   */
+  addPurchase: (seed: Partial<Purchase> & { product: string }) => void;
+  patchPurchase: (id: string, patch: Partial<Purchase>) => void;
+  removePurchase: (id: string) => void;
 
   addProject: (name: string) => void;
   patchProject: (id: string, patch: Partial<PurchaseProject>) => void;
@@ -105,9 +138,16 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     return found ?? state.scenarios[0];
   }, [state]);
 
+  // The log's monthly figure is an average over the days since the first
+  // purchase, so today is an input to derive(). Read once per mount rather than
+  // per render: `src/lib` is pure, and a figure that changes under the user
+  // mid-session because a render crossed midnight is worse than one that is a
+  // day stale until the app is reopened.
+  const todayDate = useMemo(() => today(), []);
+
   const derived = useMemo(
-    () => derive(scenario, state.settings, furnitureLabel),
-    [scenario, state.settings, furnitureLabel],
+    () => derive(scenario, state.settings, furnitureLabel, todayDate),
+    [scenario, state.settings, furnitureLabel, todayDate],
   );
 
   const mapActive = useCallback((fn: (s: Scenario) => Scenario) => {
@@ -179,6 +219,7 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
         createdAt: today(),
         entries: source.entries.map((e) => ({ ...e, id: newId('e'), history: [...e.history] })),
         projects: source.projects.map((p) => ({ ...p, id: newId('p') })),
+        purchases: source.purchases.map((p) => ({ ...p, id: newId('g') })),
       };
       return {
         ...prev,
@@ -264,6 +305,61 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     [mapActive],
   );
 
+  const pauseEntries = useCallback(
+    (ids: string[]) => {
+      const wanted = new Set(ids);
+      if (wanted.size === 0) return;
+      mapActive((s) => ({
+        ...s,
+        entries: s.entries.map((e) => (wanted.has(e.id) ? { ...e, status: 'pausado' } : e)),
+      }));
+    },
+    [mapActive],
+  );
+
+  const addPurchase = useCallback(
+    (seed: Partial<Purchase> & { product: string }) => {
+      mapActive((s) => {
+        // The next thing you log is nearly always filed where the last one was,
+        // and re-picking "Alimentación" on every row is the kind of friction
+        // that stops a daily log being kept at all. Falls back to Otros, which
+        // is the one category that is always there.
+        const last = s.purchases[s.purchases.length - 1];
+        return {
+          ...s,
+          purchases: [
+            ...s.purchases,
+            {
+              id: newId('g'),
+              date: today(),
+              category: last?.category ?? FALLBACK_CATEGORY,
+              amountCents: 0,
+              ...seed,
+            },
+          ],
+        };
+      });
+    },
+    [mapActive],
+  );
+
+  const patchPurchase = useCallback(
+    (id: string, patch: Partial<Purchase>) => {
+      mapActive((s) => ({
+        ...s,
+        purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+      }));
+    },
+    [mapActive],
+  );
+
+  const removePurchase = useCallback(
+    (id: string) => {
+      mapActive((s) => ({ ...s, purchases: s.purchases.filter((p) => p.id !== id) }));
+    },
+    [mapActive],
+  );
+
   const addProject = useCallback(
     (name: string) => {
       mapActive((s) => ({
@@ -327,6 +423,7 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
       scenarios: prev.scenarios.map((s) => ({
         ...s,
         entries: refileCategory(s.entries, id, FALLBACK_CATEGORY),
+        purchases: refilePurchaseCategory(s.purchases, id, FALLBACK_CATEGORY),
       })),
     }));
   }, []);
@@ -405,6 +502,7 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     state,
     scenario,
     derived,
+    todayDate,
     patchScenario,
     selectScenario,
     addScenario,
@@ -415,6 +513,10 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     patchEntry,
     reviseAmount,
     removeEntry,
+    pauseEntries,
+    addPurchase,
+    patchPurchase,
+    removePurchase,
     addProject,
     patchProject,
     removeProject,

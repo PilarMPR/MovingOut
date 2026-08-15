@@ -20,7 +20,7 @@ import { FALLBACK_CATEGORY, type Settings, type Taxon } from '../types';
 
 const settings: Settings = { maxRentPercent: 32 };
 const scenario = () => templateScenario('Presupuesto');
-const derived = () => derive(scenario(), settings, 'Muebles');
+const derived = () => derive(scenario(), settings, 'Muebles', '2026-08-15');
 
 /** The sheet's own figures, in cents. Change these only against the sheet. */
 const SHEET = {

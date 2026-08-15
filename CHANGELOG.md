@@ -8,6 +8,36 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — a shopping log, by product, that lands in the monthly total
+
+The app modelled what things *should* cost and had no way to record what they did. **Compras** is the other half: one line per thing bought, grouped by product, averaged per day and scaled to a month, and added to salidas. It is the only screen in the app about money already spent, and `CLAUDE.md` used to promise there would never be one — see the Notes for why that changed and what was kept from the original argument.
+
+### Added
+- **A `Compras` tab**, sitting straight after Costes because the two are the same money seen from opposite ends. Four KPIs (monthly equivalent, daily average, total logged, this calendar month), the editable log itself, and a **`Por producto`** rollup — times bought, total, average, monthly equivalent, share — which is the question the tab exists to answer.
+- **`Purchase`** in `src/types.ts`: `{ id, date, product, amountCents, category, note? }`. Deliberately not an `Entry` — a receipt has no frequency, no priority, no status and nothing to revise.
+- **`Scenario.purchases`**, per scenario rather than app-wide: what you spend on the weekly shop is part of what living in *this* flat costs, and "what if I shopped differently" is another scenario.
+- **`src/lib/purchases.ts`** — the whole calculation, with 28 tests: the window, the monthly rate, the product and category rollups, and `overlaps()`.
+- **The double-count guard.** `overlaps()` finds any category holding both logged purchases and a live recurring estimate; the tab draws an amber banner naming it with both figures, and one button pauses the estimates it names. Resumen carries the short version of the same warning under the breakdown bars.
+- **`store.pauseEntries(ids)`**, which exists for that button and nothing else.
+- **Storage schema v4**, read-compatible with v3: a payload with no `purchases` key opens with an empty log, which is exactly what its absence meant.
+
+### Changed
+- **`derive()` takes a fourth argument, `todayDate`.** The log's monthly figure is an average over the days since the first purchase, so the answer depends on what day it is, and `src/lib` is not allowed to find that out on its own — same reason `projectProgress()` already took one. `store.todayDate` reads it once per mount and shares it, so no two screens can disagree about what today is.
+- **`breakdown()` takes the log rolled up by category** and puts it in the same bars, in the same denominator. A category whose only estimate is paused but which has a real shop in it now draws a bar: logged spending is not paused, it already happened.
+- **`countCategoryUse()` counts purchases too**, and binning a category re-files them alongside the conceptos. Without that, the delete confirmation would understate what it is about to move and the log would lose a bar.
+- The Historial panel's tag reads `ESTIMACIONES, NO GASTOS` and its note now points at Compras, because "there is no spending log" stopped being true.
+
+### Notes
+- **The monthly figure is a daily average scaled by 365,25 / 12**, kept as the exact fraction `1461 / 48` so no amount is multiplied by a decimal and the scaling rounds exactly once (IND001). The two alternatives were both worse: *this calendar month* collapses to near zero every first of the month, and *the last complete month* reports nothing at all until one has passed. The average is also the only one that survives sparse logging, which is the only kind anyone actually does.
+- **The window ends today, not at the last purchase.** Three weeks of buying nothing is three weeks of not spending, and dividing by the span between purchases would delete them from the average.
+- **It adds; it never reconciles.** Nothing inspects your estimates to decide one of them is redundant now — the app does not get to delete a row you typed. The price of that is the double-count case, which is why the guard above is a feature rather than a footnote: if `overlaps()` goes quiet the total goes wrong and nothing says so.
+- **Under 30 days logged, the figure is labelled provisional.** It is real arithmetic on real receipts, and one big shop inside a five-day window still scales to something absurd.
+- **Zero is the blank on a Purchase.** There is no `hasAmount` field: a blank estimate is a normal lasting state, but a blank purchase only exists for the second between adding the row and typing what you paid, and zero is the one amount a real purchase cannot be. It renders as the same dashed `— —` and counts as missing, not as free.
+- **The amount cell here drops the trailing `€` unit span** that the Costes grid carries. `EditableAmount` already renders `6,90 €` at rest through `formatEUR`, and this column is wide enough to show all of it — so the unit beside it reads as a second euro sign. Costes gets away with it only because its narrower column clips the first one.
+- **`<input type="date">` renders in the browser's locale**, so the log's dates can show as `08/15/2026` while every other date in the app is `dd/mm/yyyy`. Known, pre-existing, and still worth the native picker on a phone.
+
+---
+
 ## Unreleased — the spreadsheet, as a scenario you can press a button for
 
 There was a `PRESUPUESTO MENSUAL · Madrid` sheet doing this job already: net income, fixed costs, a prorated column of irregulars, and a catastrophe fund sized by what it is for. It is now a second starting point in Ajustes, beside the checklist and deliberately its opposite — the checklist is structure with no prices, this is a worked budget with them.

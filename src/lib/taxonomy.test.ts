@@ -10,11 +10,19 @@ import {
   labelsOf,
   mergeTaxa,
   refileCategory,
+  refilePurchaseCategory,
   refileRoom,
   removeTaxon,
   renameTaxon,
 } from './taxonomy';
-import { FALLBACK_CATEGORY, FALLBACK_ROOM, type Entry, type Scenario, type Taxon } from '../types';
+import {
+  FALLBACK_CATEGORY,
+  FALLBACK_ROOM,
+  type Entry,
+  type Purchase,
+  type Scenario,
+  type Taxon,
+} from '../types';
 
 const taxa: Taxon[] = [
   { id: 'c_viv', label: 'Vivienda' },
@@ -36,7 +44,7 @@ const entry = (over: Partial<Entry> = {}): Entry => ({
   ...over,
 });
 
-const scenario = (entries: Entry[]): Scenario => ({
+const scenario = (entries: Entry[], purchases: Purchase[] = []): Scenario => ({
   id: 's1',
   name: 'Piso',
   situacion: 'estudiante',
@@ -45,6 +53,7 @@ const scenario = (entries: Entry[]): Scenario => ({
   buffer: { targetCents: 0 },
   entries,
   projects: [],
+  purchases,
 });
 
 describe('the shipped lists', () => {
@@ -126,5 +135,27 @@ describe('re-filing', () => {
     expect(countCategoryUse(scenarios, 'c_ocio')).toBe(2);
     expect(countRoomUse(scenarios, 'r_1')).toBe(1);
     expect(countCategoryUse(scenarios, 'c_ninguna')).toBe(0);
+  });
+
+  it('counts logged purchases too, since the same delete re-files them', () => {
+    const buy = (category: string): Purchase => ({
+      id: `g_${category}`,
+      date: '2026-08-15',
+      product: 'Leche',
+      amountCents: 120,
+      category,
+    });
+    const scenarios = [scenario([entry({ category: 'c_ocio' })], [buy('c_ocio'), buy('c_viv')])];
+    expect(countCategoryUse(scenarios, 'c_ocio')).toBe(2);
+  });
+
+  it('re-files a binned category out of the log as well as out of the conceptos', () => {
+    const purchases: Purchase[] = [
+      { id: 'g1', date: '2026-08-15', product: 'Leche', amountCents: 120, category: 'c_ocio' },
+      { id: 'g2', date: '2026-08-15', product: 'Pan', amountCents: 90, category: 'c_viv' },
+    ];
+    const next = refilePurchaseCategory(purchases, 'c_ocio', FALLBACK_CATEGORY);
+    expect(next[0].category).toBe(FALLBACK_CATEGORY);
+    expect(next[1].category).toBe('c_viv');
   });
 });

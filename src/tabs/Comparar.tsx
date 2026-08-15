@@ -104,7 +104,7 @@ export function Comparar({ store }: { store: Store }) {
 
   const columns = scenarios.map((scenario) => ({
     scenario,
-    derived: derive(scenario, state.settings, es.resumen.furnitureLine),
+    derived: derive(scenario, state.settings, es.resumen.furnitureLine, store.todayDate),
   }));
 
   // Differences are measured from where you are standing. If the active

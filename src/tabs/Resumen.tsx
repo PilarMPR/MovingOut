@@ -197,12 +197,23 @@ export function Resumen({ store }: { store: Store }) {
             cents={totals.outCents}
             tone={totals.outCents > 0 ? 'neg' : 'plain'}
             sub={
-              <>
-                {es.resumen.outSubPrefix} {coverage.withAmount} {es.resumen.outSubMiddle}{' '}
-                {coverage.total}
-                <br />
-                {es.resumen.outSubSuffix}
-              </>
+              // The log is a salida but it is not a concepto, so it gets its own
+              // line rather than being folded into a count of rows that does not
+              // include it.
+              derived.spend.monthlyCents > 0 ? (
+                <>
+                  {es.resumen.outSubPrefix} {coverage.withAmount} {es.resumen.outSubMiddle}{' '}
+                  {coverage.total} {es.resumen.outSubSuffix}
+                  <br />+ {formatEUR(derived.spend.monthlyCents)} {es.resumen.outSubLogged}
+                </>
+              ) : (
+                <>
+                  {es.resumen.outSubPrefix} {coverage.withAmount} {es.resumen.outSubMiddle}{' '}
+                  {coverage.total}
+                  <br />
+                  {es.resumen.outSubSuffix}
+                </>
+              )
             }
           />
           <KpiCard
@@ -288,6 +299,30 @@ export function Resumen({ store }: { store: Store }) {
               {formatEUR(totals.outCents)}
               {es.common.perMonth}
             </span>
+          }
+          // Two footnotes, and only one of them is ever a problem: the first says
+          // part of the bars is observed rather than estimated, the second says
+          // some of it is being counted twice. The warning wins the slot when
+          // both apply — a duplicate total is worse than an unexplained one.
+          body={
+            derived.overlaps.length > 0 ? (
+              <p className="upnote">
+                {derived.overlaps.length === 1 ? (
+                  <>
+                    {es.resumen.barsOverlapPrefix}{' '}
+                    <b>{labelOf(state.categories, derived.overlaps[0].category)}</b>{' '}
+                    {es.resumen.barsOverlapSuffix}
+                  </>
+                ) : (
+                  es.resumen.barsOverlapMany
+                )}
+              </p>
+            ) : derived.spend.monthlyCents > 0 ? (
+              <p className="upnote">
+                {es.resumen.barsLoggedPrefix} <b>{formatEUR(derived.spend.monthlyCents)}</b>{' '}
+                {es.resumen.barsLoggedSuffix}
+              </p>
+            ) : undefined
           }
         >
           {breakdown.length === 0 ? (

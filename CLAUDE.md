@@ -21,6 +21,8 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 > **2026-08-15: the categories and rooms became the user's, and a new scenario starts blank.** Both lists are editable in Ajustes; the seeded checklist is now a button rather than a default. Storage schema **v3**, read-compatible with v2. See [Taxonomy](#taxonomy--the-categories-and-rooms-are-the-users) below — it holds rules that are easy to undo by accident.
 >
 > **Also 2026-08-15: a second starting point, the `Presupuesto mensual · Madrid` template** (`src/lib/template.ts`). The user's own spreadsheet as a scenario, and the *only* module in the repo that carries amounts — read its header before editing it, because that exception has a reason and three of its modelling choices are load-bearing.
+>
+> **2026-08-16: there is now a shopping log — a `Compras` tab, and the app's only record of money already spent.** One line per product bought, averaged per day, scaled to a month and added to salidas. Storage schema **v4**, read-compatible with v3. This reverses a "never" that was written in three places here; the argument behind that never is intact and is what shapes the feature. See [The shopping log](#the-shopping-log--the-only-record-of-money-already-spent).
 
 > **Node lives at `/home/p/.local/share/node/bin` and is not on `PATH`.** `export PATH="/home/p/.local/share/node/bin:$PATH"` before any `npm` command, or every script in the next section reports "command not found" and it looks like the toolchain is missing when it is not.
 
@@ -128,6 +130,23 @@ The rules that keep it from quietly losing data:
 
 The no-hardcoded-figures rule above is about *published* numbers that go stale and read as authoritative. One person's estimates of their own budget, arriving as a revisable first revision, are not that — but say so in the header if you add another such module, or the next reader will reasonably conclude the rule was ignored.
 
+### The shopping log — the only record of money already spent
+
+`Purchase { id, date, product, amountCents, category, note? }`, in `Scenario.purchases`. One line per thing bought. Everything else in the app is a forecast; this is a receipt, and the two are kept apart on purpose.
+
+**It is not an `Entry`, and making it one would be a mistake.** A receipt has no frequency (it happened once, on a day), no priority (you already bought it), no status (`pagado` is the only one available) and no `history` — a price you paid is not an estimate you can revise, and pushing a revision onto it would put a typo correction inside the changelog IND002 protects. What the two *do* share is the category axis, which is what lets the log reach the same breakdown as the estimates.
+
+**Per scenario, unlike the two taxonomies.** What you spend on the weekly shop is part of what living in *this* flat costs, and "what if I shopped differently" is another scenario rather than another mode.
+
+The four rules that decide what the log means, all in `src/lib/purchases.ts` and all easy to undo:
+
+- **The monthly figure is a daily average scaled by a month's length** — `total ÷ days × 365,25/12`, held as the exact fraction `1461/48` so no amount is multiplied by a decimal and it rounds once (IND001). *This calendar month* would collapse to near zero every 1st; *the last complete month* would report nothing until one had passed.
+- **The window ends today, not at the last purchase.** Three weeks of buying nothing is three weeks of not spending, and the average has to see them.
+- **It adds; it never reconciles.** The log does not replace an estimate and nothing silently pauses a row the user typed. The cost of that is the double-count case, and `overlaps()` is the whole defence: it finds any category holding both logged purchases and a live recurring estimate, the tab draws an amber banner naming both figures, and one button pauses the estimates. **If `overlaps()` stops firing, the monthly total is wrong and nothing on screen says so.**
+- **Zero is the blank.** There is no `hasAmount` here — deliberately, and against the rule the rest of the app follows. A blank *estimate* is a normal lasting state; a blank *purchase* exists for the second between adding the row and typing what you paid, and zero is the one amount a real purchase cannot be. It renders as the same dashed `— —` and counts as missing.
+
+**Why this does not contradict "the app must stay useful without daily upkeep".** That rule is still in force and still the reason Historial is a log of estimates. The log is **additive and optional**: every figure works with an empty log, and because the average divides by days *elapsed* rather than days *logged*, a fortnight of not logging lowers the average honestly instead of hiding a gap. What would break the rule is making the log the source of the monthly costs. It is not.
+
 ### The rest
 
 - **FurnitureItem** — an `Entry` with `room` set and `status` used as `pendiente` / `pagado`. Grouped by room, filterable to `esencial` only, which gives the true minimum to move in.
@@ -138,16 +157,20 @@ The no-hardcoded-figures rule above is about *published* numbers that go stale a
 
 All computed in `src/lib/`, never inline in a component (`IND007`):
 
+All of them come out of `derive(scenario, settings, furnitureLabel, todayDate)`. **The fourth argument is not optional and not a `new Date()`**: the log's monthly figure is an average over the days since the first purchase, so the answer depends on what day it is, and `src/lib` may not find that out on its own. `store.todayDate` reads it once per mount and shares it, so two screens can never disagree about today.
+
 | Figure | Meaning |
 |---|---|
-| `monthlyIn` / `monthlyOut` | Frequency-normalised totals per direction |
+| `monthlyIn` / `monthlyOut` | Frequency-normalised totals per direction, **plus the shopping log's monthly equivalent on the salidas side** |
 | `balance` | `monthlyIn - monthlyOut` — the number the whole app exists to show |
 | `upfrontCash` | Everything due before you sleep there, fianza included |
 | `actualSpend` | `upfrontCash` minus refundables — what you never see again |
 | `runwayMonths` | Savings after upfront costs ÷ monthly deficit |
 | `maxAffordableRent` | Guideline figure, see the rules below |
-| `drift` | Burn today vs burn when the scenario was created |
+| `drift` | Burn today vs burn when the scenario was created. **Estimates only** — the log has no original to drift from |
 | `verdict` | The plain-language answer, shown as a `.tag` pill |
+| `spend` | The shopping log: total, daily average, monthly equivalent, coverage |
+| `overlaps` | Categories where the log and a live estimate may be counting the same money |
 
 ## Price history — the changelog
 
@@ -159,7 +182,7 @@ This is what turns a one-shot calculator into something useful six months later.
 - per scenario — **drift**: is this piso more expensive than when I planned it?
 - one **Historial** view across every item, newest first, so a rise in the weekly shop is visible without hunting
 
-This is a log of **estimates**, not of spending. There is deliberately no daily expense logging — the app must stay useful without daily upkeep.
+This is a log of **estimates**, not of spending, and Historial must never grow into a transactions feed. Spending is logged in **Compras** instead, as `Purchase` rows that carry no history at all — see [The shopping log](#the-shopping-log--the-only-record-of-money-already-spent). The two are separate because revising a forecast and correcting a receipt are different acts, and only the first one is worth keeping a record of.
 
 ## Taxes & local charges
 
@@ -189,6 +212,7 @@ The notes that stop a plausible-looking calculation being quietly wrong:
 - **Runway only means something when the balance is negative.** When it is positive, report time-to-goal instead; an "∞ months" runway is a bug in the framing, not a result.
 - **Max affordable rent is a rule of thumb** (~30–35% of income), shown to the user as a visible guideline with its assumption stated. It is never a gate that blocks input.
 - **The first big shop is not a weekly shop.** Stocking an empty kitchen is a one-off event of its own; folding it into `alimentacion` blows month one silently. See [`docs/COST-CHECKLIST.md`](docs/COST-CHECKLIST.md).
+- **The weekly shop can be counted twice.** A `Compra semanal` estimate in Costes and the same food logged in Compras both enter `monthlyOut`, because the log adds and never reconciles. `overlaps()` is what makes that visible instead of silent, and anything that narrows it — a filter, a status, a category check — is quietly narrowing the only thing standing between the user and a total that is wrong by a weekly shop.
 
 ## UI shape — the Command Center skin
 
@@ -201,7 +225,7 @@ grep -n 'DESIGN TOKENS\|^\.panel\|^\.kpi\|^\.tag\|^\.tbl' ~/repos/work/HotPotato
 grep -n 'HP\.renderOverview\|HP\.renderFinanciero' ~/repos/work/HotPotato_CommandCenter/index.html
 ```
 
-Tabs: **Resumen · Costes · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema**. Comparison is the reason the app exists, so it is a screen, not a mode. Sistema is the component sheet rendered against the live tokens; it sits apart on the right of the tab row and is desktop-only.
+Tabs: **Resumen · Costes · Compras · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema**. Comparison is the reason the app exists, so it is a screen, not a mode. Compras sits straight after Costes because the two are the same money from opposite ends — what you thought it would cost, then what it did. Sistema is the component sheet rendered against the live tokens; it sits apart on the right of the tab row and is desktop-only.
 
 The grammar to keep:
 
@@ -232,7 +256,7 @@ They never overlap. A category never gets a colour of its own — breakdown bars
 
 ## Architecture conventions
 
-- **`src/lib/` is a pure calculation layer** — plain functions over plain data. No React, no storage, no DOM. This is what Vitest covers, and the UI stays thin enough that a bug is almost always in `lib` or almost always in a component, never ambiguously between them.
+- **`src/lib/` is a pure calculation layer** — plain functions over plain data. No React, no storage, no DOM, **and no clock**: anything that depends on what day it is takes `todayDate` as a parameter (`derive`, `projectProgress`, everything in `purchases.ts`), which is also the only reason those figures are testable at all.
 - **`src/lib/storage.ts` is the only module that touches `localStorage`** (`IND006`). The saved payload carries a schema `version`, and shape changes are handled by **read-time backfill**, not migrations. JSON export/import goes through the same module.
 - **`src/types.ts`** — the single source of truth for the model above.
 - **`src/i18n/es.ts`** — every Spanish string, plus `plural()`. No Spanish literals in components (`IND008`).
@@ -313,6 +337,7 @@ The build order is done and the re-skin has landed, type-checked, tested and bui
 
 1. **Build one real scenario from the blank canvas** — type the conceptos that actually apply, add the categories that are missing, bin the ones that are not. That is now the primary way to find out whether `COST-CHECKLIST.md` predicted well: what you reach for and cannot find is the gap. Load the checklist afterwards to see what it would have added and you did not need.
 2. **Install the APK on the phone** — `android:apk` produces a debug-signed one, and `adb install` needs a device connected (there was none when it was built). The export/import round-trip is the only backup story, so it wants testing on the device that will actually hold the data. A **static deploy is now optional rather than the only route onto the phone**, but it is still the easiest way to reinstall.
-3. **Prune the invariants.** Six of the eight have never fired. After a few weeks of real edits, delete the ones that never do — `docs/DEVLOG.md` has the recurrence table, and its IND003 note is the case for patience with the ones that only matter at change time.
+3. **Keep the shopping log for a month and see whether the average settles.** Everything about it is arithmetic on an assumption — that a daily average over the window is a fair picture of a month — and the only way to test that assumption is to log real shopping for four or five weeks and compare `equivalente mensual` against what actually left the account. The figure is labelled provisional under 30 days for exactly this reason. If it reads consistently high or low, the fix is the window, not the scaling.
+4. **Prune the invariants.** Six of the eight have never fired. After a few weeks of real edits, delete the ones that never do — `docs/DEVLOG.md` has the recurrence table, and its IND003 note is the case for patience with the ones that only matter at change time. Note that IND003's coverage is now known to stop at the top level of the payload.
 
-Known soft spots, in case one bites: `<input type="date">` renders in the *browser's* locale, not the document's; and a near-zero deficit produces an honest but startling runway (a 12 €/mes gap against 4 900 € of savings is genuinely 408 months).
+Known soft spots, in case one bites: `<input type="date">` renders in the *browser's* locale, not the document's — visible in the Compras log, where a date can read `08/15/2026` while every other date in the app is `dd/mm/yyyy`; and a near-zero deficit produces an honest but startling runway (a 12 €/mes gap against 4 900 € of savings is genuinely 408 months).

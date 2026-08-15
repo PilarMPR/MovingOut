@@ -156,6 +156,47 @@ describe('ensureShape', () => {
     expect(state.scenarios[0].entries[1].hasAmount).toBe(false);
   });
 
+  it('gives a payload written before the shopping log an empty one (IND003)', () => {
+    // v3 had no `purchases` key, and the absence meant exactly this.
+    const state = ensureShape({ version: 3, scenarios: [{ id: 's1', entries: [] }] });
+    expect(state.scenarios[0].purchases).toEqual([]);
+  });
+
+  it('re-files a purchase whose category no longer exists', () => {
+    const state = ensureShape({
+      categories: [{ id: 'c_1', label: 'Piso' }],
+      scenarios: [
+        {
+          id: 's1',
+          createdAt: '2026-08-01',
+          purchases: [
+            { id: 'g1', date: '2026-08-14', product: 'Leche', amountCents: 120, category: 'c_borrada' },
+          ],
+        },
+      ],
+    });
+    expect(state.scenarios[0].purchases[0].category).toBe(FALLBACK_CATEGORY);
+  });
+
+  it('coerces a malformed purchase rather than dropping the row', () => {
+    const state = ensureShape({
+      scenarios: [
+        {
+          id: 's1',
+          createdAt: '2026-08-01',
+          // check:ignore IND005, IND001 a deliberately malformed payload is the point of this test
+          purchases: [{ id: 'g1', date: 'el martes', amountCents: -450.7 }],
+        },
+      ],
+    });
+    const purchase = state.scenarios[0].purchases[0];
+    // An unreadable date falls back to the scenario's own start, an amount is
+    // rounded and made positive, and a missing product name is blank, not gone.
+    expect(purchase.date).toBe('2026-08-01');
+    expect(purchase.amountCents).toBe(451);
+    expect(purchase.product).toBe('');
+  });
+
   it('repairs a dangling active scenario id instead of showing nothing', () => {
     const state = ensureShape({
       scenarios: [{ id: 's1' }],

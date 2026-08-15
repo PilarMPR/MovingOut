@@ -6,6 +6,7 @@ import { es } from './i18n/es';
 import { useStore } from './state/store';
 import { Ajustes } from './tabs/Ajustes';
 import { Comparar } from './tabs/Comparar';
+import { Compras } from './tabs/Compras';
 import { Costes, NO_FILTERS, type Filters } from './tabs/Costes';
 import { CostesMobile } from './tabs/CostesMobile';
 import { Historial } from './tabs/Historial';
@@ -15,10 +16,15 @@ import { Resumen } from './tabs/Resumen';
 import { Sistema } from './tabs/Sistema';
 import { SITUACIONES } from './types';
 
-/** The seven product tabs, in the order the design puts them. */
+/**
+ * The product tabs, in the order the design puts them. Compras sits straight
+ * after Costes: it is the same money seen from the other end — what you thought
+ * it would cost, then what it did — and the two are read against each other.
+ */
 const TABS = [
   'resumen',
   'costes',
+  'compras',
   'muebles',
   'proyectos',
   'historial',
@@ -89,6 +95,8 @@ export function App() {
         ) : (
           <Costes store={store} filters={filters} onFilters={setFilters} />
         );
+      case 'compras':
+        return <Compras store={store} />;
       case 'muebles':
         return (
           <Muebles store={store} onlyEssential={onlyEssential} onOnlyEssential={setOnlyEssential} />

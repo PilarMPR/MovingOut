@@ -14,7 +14,7 @@
  *   · the fallback taxon (`otros`) always exists and can never be deleted, so
  *     `removeCategory` always has somewhere to put the rows it displaces
  */
-import type { Entry, Scenario, Taxon } from '../types';
+import type { Entry, Purchase, Scenario, Taxon } from '../types';
 import {
   DEFAULT_CATEGORY_IDS,
   DEFAULT_ROOM_IDS,
@@ -114,13 +114,34 @@ export function refileRoom(entries: readonly Entry[], from: string, to: string):
 }
 
 /**
- * How many entries a taxon holds, across every scenario — which is the honest
+ * The same for logged purchases, which carry a category exactly as an Entry
+ * does. Without it, binning "Alimentación" would leave every shop filed under
+ * an id nothing renders, and the breakdown would lose a bar it should keep.
+ */
+export function refilePurchaseCategory(
+  purchases: readonly Purchase[],
+  from: string,
+  to: string,
+): Purchase[] {
+  return purchases.map((purchase) =>
+    purchase.category === from ? { ...purchase, category: to } : purchase,
+  );
+}
+
+/**
+ * How many rows a taxon holds, across every scenario — which is the honest
  * number, because the lists are app-wide and so is the delete. Counting only
  * the open scenario would promise "4 conceptos" and move forty.
+ *
+ * Purchases count too: they are re-filed by the same delete, so leaving them
+ * out would understate what the confirmation is about to move.
  */
 export function countCategoryUse(scenarios: readonly Scenario[], id: string): number {
   return scenarios.reduce(
-    (total, scenario) => total + scenario.entries.filter((entry) => entry.category === id).length,
+    (total, scenario) =>
+      total +
+      scenario.entries.filter((entry) => entry.category === id).length +
+      scenario.purchases.filter((purchase) => purchase.category === id).length,
     0,
   );
 }
