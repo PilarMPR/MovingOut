@@ -1,5 +1,5 @@
 /**
- * The seeded checklist — docs/COST-CHECKLIST.md turned into entries.
+ * The checklist — docs/COST-CHECKLIST.md turned into entries.
  *
  * Deliberately no prices. Every row ships with a direction, a category, a real
  * frequency and a blank amount, because a number baked into a repo is stale
@@ -10,10 +10,16 @@
  * The failure mode this list exists to prevent: a budget that looks fine, and
  * then month one costs 400 € more than planned because every item here is
  * individually too small to think about.
+ *
+ * **It is no longer poured into every new scenario.** A scenario starts blank
+ * and this is a button in Ajustes, because the list is a prediction from a
+ * document and the rows the user actually types are the real budget. Arriving
+ * to 75 pre-written rows makes deleting the wrong ones the first task.
  */
-import type { Category, Direction, Entry, Frequency, Priority, Room, Status } from '../types';
+import type { Category, Direction, Entry, Frequency, Priority, Room, Status, Taxon } from '../types';
 import { es } from '../i18n/es';
 import { newId } from './id';
+import { defaultCategories, defaultRooms } from './taxonomy';
 
 interface SeedSpec {
   key: string;
@@ -181,10 +187,35 @@ function toEntry(spec: SeedSpec, copy: Record<string, { label: string; note?: st
   return entry;
 }
 
-/** Every seeded row for a fresh scenario: conceptos first, then furniture. */
+/** Every checklist row: conceptos first, then furniture. */
 export function seedEntries(): Entry[] {
   return [
     ...COSTES.map((spec) => toEntry(spec, es.seed)),
     ...MUEBLES.map((spec) => toEntry(spec, es.seedFurniture)),
   ];
+}
+
+/** How many rows the button is about to add, for the copy that warns about it. */
+export function seedCount(): number {
+  return COSTES.length + MUEBLES.length;
+}
+
+/**
+ * The categories and rooms the checklist files itself under.
+ *
+ * Loading the checklist restores any of these that have since been binned:
+ * without that, a row filed under a deleted category would land in Otros on
+ * the next read, and thirty rows would arrive already collapsed into one heap.
+ * Taxa that still exist keep the label they have now — restoring a list is not
+ * a reason to undo a rename.
+ */
+export function seedTaxonomy(): { categories: Taxon[]; rooms: Taxon[] } {
+  const categoryIds = new Set<Category>([...COSTES, ...MUEBLES].map((spec) => spec.category));
+  const roomIds = new Set<Room>(
+    MUEBLES.map((spec) => spec.room).filter((room): room is Room => room !== undefined),
+  );
+  return {
+    categories: defaultCategories().filter((taxon) => categoryIds.has(taxon.id)),
+    rooms: defaultRooms().filter((taxon) => roomIds.has(taxon.id)),
+  };
 }

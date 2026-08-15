@@ -17,7 +17,7 @@
  *     printed alongside every total
  */
 import type { Cents, Category, Entry, Room, Scenario, Settings } from '../types';
-import { ROOMS } from '../types';
+import { FALLBACK_ROOM } from '../types';
 import { isRecurring, toMonthly } from './frequency';
 import { percentOf, ratioPercent } from './money';
 
@@ -493,16 +493,25 @@ export interface RoomGroup {
 }
 
 /**
- * Furniture grouped by room, in the fixed room order so the list does not
- * reshuffle as items are ticked off.
+ * Furniture grouped by room, in the order the user's room list is in, so the
+ * list does not reshuffle as items are ticked off.
+ *
+ * `roomIds` is passed in rather than read from a constant because the rooms
+ * are the user's to edit. An article whose room has been binned lands in the
+ * fallback group instead of vanishing — a wardrobe with nowhere to go is
+ * still a wardrobe you have to buy.
  *
  * `onlyEssential` is the control that answers the question this tab exists
  * for — the true minimum to move in — which is why it is promoted out of the
  * chip row and into the panel header.
  */
-export function furnitureByRoom(furniture: Entry[], onlyEssential: boolean): RoomGroup[] {
+export function furnitureByRoom(
+  furniture: Entry[],
+  roomIds: readonly Room[],
+  onlyEssential: boolean,
+): RoomGroup[] {
   const groups = new Map<Room, RoomGroup>();
-  for (const room of ROOMS) {
+  for (const room of roomIds) {
     groups.set(room, {
       room,
       items: [],
@@ -516,7 +525,7 @@ export function furnitureByRoom(furniture: Entry[], onlyEssential: boolean): Roo
 
   for (const item of furniture) {
     if (onlyEssential && item.priority !== 'esencial') continue;
-    const group = groups.get(item.room ?? 'otros');
+    const group = groups.get(item.room ?? FALLBACK_ROOM) ?? groups.get(FALLBACK_ROOM);
     if (group === undefined) continue;
     group.items.push(item);
     if (item.status === 'pagado') {

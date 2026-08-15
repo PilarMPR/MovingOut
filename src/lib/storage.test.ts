@@ -1,22 +1,47 @@
 import { describe, expect, it } from 'vitest';
+import { seedEntries } from './seed';
 import { DEFAULTS, ensureShape, exportJson, importJson, newScenario } from './storage';
+import { FALLBACK_CATEGORY, FALLBACK_ROOM } from '../types';
 
 describe('DEFAULTS', () => {
-  it('opens on a seeded scenario with no prices in it', () => {
+  it('opens on a blank scenario', () => {
     const state = DEFAULTS();
     expect(state.scenarios).toHaveLength(1);
     expect(state.activeScenarioId).toBe(state.scenarios[0].id);
-    expect(state.scenarios[0].entries.length).toBeGreaterThan(40);
-    // Deliberately no prices: a number baked into a repo is stale within a year.
-    expect(state.scenarios[0].entries.every((entry) => !entry.hasAmount)).toBe(true);
+    // The canvas is empty on purpose: the checklist is a button, not a default.
+    expect(state.scenarios[0].entries).toEqual([]);
   });
 
-  it('seeds the rows that exist to teach a rule', () => {
-    const entries = DEFAULTS().scenarios[0].entries;
+  it('still opens with both taxonomies filled, or nothing could be filed', () => {
+    const state = DEFAULTS();
+    expect(state.categories.length).toBeGreaterThan(1);
+    expect(state.rooms.length).toBeGreaterThan(1);
+    expect(state.categories.some((taxon) => taxon.id === FALLBACK_CATEGORY)).toBe(true);
+    expect(state.rooms.some((taxon) => taxon.id === FALLBACK_ROOM)).toBe(true);
+    expect(state.categories.every((taxon) => taxon.label !== '')).toBe(true);
+  });
+});
+
+describe('the checklist', () => {
+  it('carries the rows that exist to teach a rule, and no prices', () => {
+    const entries = seedEntries();
+    expect(entries.length).toBeGreaterThan(40);
+    // Deliberately no prices: a number baked into a repo is stale within a year.
+    expect(entries.every((entry) => !entry.hasAmount)).toBe(true);
     expect(entries.some((entry) => entry.refundable === true)).toBe(true);
     expect(entries.some((entry) => entry.shouldNotPay === true)).toBe(true);
     // Water and gas are billed every two months here, and that is the trap.
     expect(entries.some((entry) => entry.frequency === 'bimestral')).toBe(true);
+  });
+
+  it('only files under taxa a fresh install actually has', () => {
+    const { categories, rooms } = DEFAULTS();
+    const categoryIds = new Set(categories.map((taxon) => taxon.id));
+    const roomIds = new Set(rooms.map((taxon) => taxon.id));
+    for (const entry of seedEntries()) {
+      expect(categoryIds.has(entry.category)).toBe(true);
+      if (entry.room !== undefined) expect(roomIds.has(entry.room)).toBe(true);
+    }
   });
 });
 
@@ -34,6 +59,51 @@ describe('ensureShape', () => {
       expect(state.scenarios.length).toBeGreaterThan(0);
       expect(state.activeScenarioId).toBe(state.scenarios[0].id);
     }
+  });
+
+  it('gives a pre-v3 payload the shipped taxonomies', () => {
+    const state = ensureShape({ version: 2, scenarios: [{ id: 's1', entries: [] }] });
+    expect(state.categories.length).toBeGreaterThan(1);
+    expect(state.rooms.length).toBeGreaterThan(1);
+  });
+
+  it('keeps a saved taxonomy, tidied — no blanks, no duplicate ids', () => {
+    const state = ensureShape({
+      categories: [
+        { id: 'c_1', label: 'Piso' },
+        { id: 'c_1', label: 'Piso otra vez' },
+        { id: '', label: 'Sin id' },
+        { label: 'Sin id tampoco' },
+        { id: 'c_2' },
+      ],
+    });
+    expect(state.categories.map((taxon) => taxon.id)).toEqual(['c_1', 'c_2', FALLBACK_CATEGORY]);
+    // A blank label would render as an unclickable sliver, so it shows the id.
+    expect(state.categories[1].label).toBe('c_2');
+  });
+
+  it('puts the fallback back when a payload has dropped it', () => {
+    const state = ensureShape({ categories: [{ id: 'c_1', label: 'Piso' }] });
+    expect(state.categories.some((taxon) => taxon.id === FALLBACK_CATEGORY)).toBe(true);
+  });
+
+  it('re-files an entry whose category no longer exists', () => {
+    const state = ensureShape({
+      categories: [{ id: 'c_1', label: 'Piso' }],
+      rooms: [{ id: 'r_1', label: 'Cocina' }],
+      scenarios: [
+        {
+          id: 's1',
+          entries: [
+            { id: 'e1', label: 'Alquiler', category: 'c_borrada' },
+            { id: 'e2', label: 'Sofá', category: 'c_1', room: 'r_borrada' },
+          ],
+        },
+      ],
+    });
+    expect(state.scenarios[0].entries[0].category).toBe(FALLBACK_CATEGORY);
+    // Re-filed, not cleared: `room !== undefined` is what keeps it in Muebles.
+    expect(state.scenarios[0].entries[1].room).toBe(FALLBACK_ROOM);
   });
 
   it('coerces an unknown enum value rather than throwing', () => {

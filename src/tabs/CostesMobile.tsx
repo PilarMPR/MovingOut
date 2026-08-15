@@ -8,15 +8,9 @@ import { es } from '../i18n/es';
 import { divisorLabel, toMonthly } from '../lib/frequency';
 import { delta } from '../lib/history';
 import { formatEUR, formatSignedEUR, formatSignedPercent } from '../lib/money';
+import { idsOf, labelsOf } from '../lib/taxonomy';
 import type { Store } from '../state/store';
-import {
-  CATEGORIES,
-  DIRECTIONS,
-  FREQUENCIES,
-  PRIORITIES,
-  STATUSES,
-  type Entry,
-} from '../types';
+import { DIRECTIONS, FREQUENCIES, PRIORITIES, STATUSES, type Entry } from '../types';
 import { applyFilters, type Filters } from './Costes';
 
 /**
@@ -29,8 +23,8 @@ import { applyFilters, type Filters } from './Costes';
  * status as a 3 px left edge, totals in a sticky footer.
  */
 
-function secondLine(entry: Entry): string {
-  const category = es.category[entry.category];
+function secondLine(entry: Entry, categoryLabels: Record<string, string>): string {
+  const category = categoryLabels[entry.category] ?? entry.category;
   const frequency = es.frequency[entry.frequency];
   return `${category} · ${frequency}`;
 }
@@ -55,11 +49,13 @@ function MonthlyText({ entry }: { entry: Entry }) {
 interface CardProps {
   entry: Entry;
   store: Store;
+  categoryIds: string[];
+  categoryLabels: Record<string, string>;
   open: boolean;
   onToggle: () => void;
 }
 
-function Card({ entry, store, open, onToggle }: CardProps) {
+function Card({ entry, store, categoryIds, categoryLabels, open, onToggle }: CardProps) {
   const d = delta(entry);
   const dim = entry.status === 'pausado';
 
@@ -79,7 +75,7 @@ function Card({ entry, store, open, onToggle }: CardProps) {
       </button>
 
       <div className="m2">
-        <span>{secondLine(entry)}</span>
+        <span>{secondLine(entry, categoryLabels)}</span>
         <span>
           <MonthlyText entry={entry} />
           {d.vsOriginalPercent !== null && d.vsOriginalPercent !== 0 && (
@@ -132,8 +128,8 @@ function Card({ entry, store, open, onToggle }: CardProps) {
             />
             <Select
               value={entry.category}
-              options={CATEGORIES}
-              labels={es.category}
+              options={categoryIds}
+              labels={categoryLabels}
               ariaLabel={es.costes.colCategory}
               onChange={(category) => store.patchEntry(entry.id, { category })}
             />
@@ -178,8 +174,18 @@ interface Props {
 export function CostesMobile({ store, filters, onFilters }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const { costes, totals, verdict } = store.derived;
-  const rows = applyFilters(costes, filters);
-  const set = (patch: Partial<Filters>) => onFilters({ ...filters, ...patch });
+  const categoryIds = idsOf(store.state.categories);
+  const categoryLabels = labelsOf(store.state.categories);
+
+  // There is no category chip on a phone, so a category filter set on the
+  // desktop grid could hide everything here with nothing on screen to undo it.
+  const live: Filters =
+    filters.category === 'all' || categoryLabels[filters.category] !== undefined
+      ? filters
+      : { ...filters, category: 'all' };
+
+  const rows = applyFilters(costes, live);
+  const set = (patch: Partial<Filters>) => onFilters({ ...live, ...patch });
 
   // The footer figure takes the verdict's colour, not the raw sign: a balance
   // of +8 € is positive and still not a yes.
@@ -190,7 +196,7 @@ export function CostesMobile({ store, filters, onFilters }: Props) {
       <div className="mbar">
         <Chip
           on={filters.direction === 'all' && !filters.missingOnly && filters.priority === 'all'}
-          onClick={() => onFilters({ ...filters, direction: 'all', priority: 'all', missingOnly: false })}
+          onClick={() => onFilters({ ...live, direction: 'all', priority: 'all', missingOnly: false })}
         >
           {es.costes.filterAll}
         </Chip>
@@ -211,13 +217,19 @@ export function CostesMobile({ store, filters, onFilters }: Props) {
         </Chip>
       </div>
 
-      {rows.length === 0 && <div className="empty-note">{es.costes.emptyList}</div>}
+      {rows.length === 0 && (
+        <div className="empty-note">
+          {costes.length === 0 ? es.costes.emptyScenario : es.costes.emptyList}
+        </div>
+      )}
 
       {rows.map((entry) => (
         <Card
           key={entry.id}
           entry={entry}
           store={store}
+          categoryIds={categoryIds}
+          categoryLabels={categoryLabels}
           open={open === entry.id}
           onToggle={() => setOpen(open === entry.id ? null : entry.id)}
         />

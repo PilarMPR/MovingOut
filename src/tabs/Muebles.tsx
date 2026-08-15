@@ -7,8 +7,9 @@ import { Select, StatusSelect } from '../components/Select';
 import { es, plural } from '../i18n/es';
 import { formatEUR } from '../lib/money';
 import { furnitureByRoom, furnitureTotals } from '../lib/derive';
+import { hasTaxon, idsOf, labelOf, labelsOf } from '../lib/taxonomy';
 import type { Store } from '../state/store';
-import { PRIORITIES, ROOMS, STATUSES } from '../types';
+import { FALLBACK_CATEGORY, FALLBACK_ROOM, PRIORITIES, STATUSES } from '../types';
 
 /** Furniture is `pendiente` / `pagado`; the other two states do not apply here. */
 const FURNITURE_STATUSES = STATUSES.filter(
@@ -23,8 +24,16 @@ interface Props {
 
 export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
   const { furniture } = store.derived;
+  const rooms = store.state.rooms;
+  const roomIds = idsOf(rooms);
+  const roomLabels = labelsOf(rooms);
   const totals = furnitureTotals(furniture);
-  const groups = furnitureByRoom(furniture, onlyEssential);
+  const groups = furnitureByRoom(furniture, roomIds, onlyEssential);
+
+  const newFurnitureCategory = hasTaxon(store.state.categories, 'mobiliario')
+    ? 'mobiliario'
+    : FALLBACK_CATEGORY;
+  const newFurnitureRoom = hasTaxon(rooms, FALLBACK_ROOM) ? FALLBACK_ROOM : (roomIds[0] ?? FALLBACK_ROOM);
 
   const projectOptions = ['', ...store.scenario.projects.map((p) => p.id)];
   const projectLabels: Record<string, string> = { '': es.muebles.noProject };
@@ -88,7 +97,7 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
         return (
           <Panel
             key={group.room}
-            label={es.room[group.room]}
+            label={labelOf(rooms, group.room)}
             tone={group.pendingCount === 0 ? 'green' : 'amber'}
             actions={
               <span>
@@ -135,9 +144,9 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
                       </td>
                       <td style={{ width: 100 }}>
                         <Select
-                          value={item.room ?? 'otros'}
-                          options={ROOMS}
-                          labels={es.room}
+                          value={item.room ?? FALLBACK_ROOM}
+                          options={roomIds}
+                          labels={roomLabels}
                           ariaLabel={es.muebles.panel}
                           onChange={(room) => store.patchEntry(item.id, { room })}
                         />
@@ -199,11 +208,13 @@ export function Muebles({ store, onlyEssential, onOnlyEssential }: Props) {
         onClick={() =>
           store.addEntry({
             label: es.muebles.newLabel,
-            category: 'mobiliario',
+            // Both defaults are checked against the live lists first: either
+            // one may have been binned, and `room` is what makes a row furniture.
+            category: newFurnitureCategory,
             frequency: 'unico',
             status: 'pendiente',
             priority: 'esencial',
-            room: 'otros',
+            room: newFurnitureRoom,
           })
         }
       />

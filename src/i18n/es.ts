@@ -6,11 +6,11 @@
  * allowed to say the uncomfortable version of the answer.
  */
 import type {
-  Category,
+  DefaultCategoryId,
+  DefaultRoomId,
   Direction,
   Frequency,
   Priority,
-  Room,
   Situacion,
   Status,
 } from '../types';
@@ -62,6 +62,11 @@ export const es = {
     salida: 'Salida',
   } satisfies Record<Direction, string>,
 
+  /**
+   * The labels of the *shipped* categories only. Anything the user adds later
+   * is data, carries its own label, and never passes through here — which is
+   * the line IND008 actually draws: app copy is translated, user content is not.
+   */
   category: {
     vivienda: 'Vivienda',
     suministros: 'Suministros',
@@ -73,7 +78,7 @@ export const es = {
     ingresos: 'Ingresos',
     mobiliario: 'Mobiliario',
     otros: 'Otros',
-  } satisfies Record<Category, string>,
+  } satisfies Record<DefaultCategoryId, string>,
 
   frequency: {
     mensual: 'Mensual',
@@ -101,7 +106,7 @@ export const es = {
     dormitorio: 'Dormitorio',
     bano: 'Baño',
     otros: 'Otros',
-  } satisfies Record<Room, string>,
+  } satisfies Record<DefaultRoomId, string>,
 
   situacion: {
     estudiante: 'Estudiante',
@@ -246,6 +251,8 @@ export const es = {
     firstEstimate: 'estimación inicial',
     noChange: 'sin cambio',
     emptyList: 'Ningún concepto pasa estos filtros.',
+    /** A blank scenario is the normal starting state, so it reads as an invitation. */
+    emptyScenario: 'Escenario en blanco. Añade el primer concepto abajo, o carga la checklist desde Ajustes.',
     filters: 'Filtros',
   },
 
@@ -369,6 +376,39 @@ export const es = {
     deleteScenarioConfirm: '¿Borrar este escenario y todos sus conceptos?',
     lastScenario: 'Es el único escenario que queda.',
     createdOn: 'Creado el',
+
+    panelStart: 'Punto de partida',
+    checklistTitle: 'Checklist de gastos',
+    checklistHint:
+      'Un escenario nuevo nace vacío: los conceptos los pones tú, uno a uno, con el botón de añadir. Si prefieres empezar desde una lista hecha, esto añade la checklist completa —alquiler, suministros, consumibles, muebles— sin ningún importe puesto.',
+    checklistButton: 'Cargar checklist',
+    checklistNote: 'Se añade a lo que ya haya en este escenario; no borra nada.',
+    checklistConfirmPrefix: '¿Añadir',
+    checklistConfirmSuffix: 'conceptos a este escenario?',
+    checklistDone: 'Checklist cargada en este escenario.',
+
+    panelCategories: 'Categorías',
+    categoriesHint:
+      'Las categorías son tuyas y valen para todos los escenarios: renómbralas, bórralas o crea las que necesites. Cambiar el nombre no recoloca nada, sólo cambia cómo se llama.',
+    categoryAdd: '+ Añadir categoría',
+    categoryNew: 'Categoría nueva',
+    deleteCategory: 'Borrar categoría',
+
+    panelRooms: 'Habitaciones',
+    roomsHint:
+      'Lo mismo para las estancias de Muebles. Un piso tiene las habitaciones que tiene, y esta lista debería parecerse al que estás mirando.',
+    roomAdd: '+ Añadir habitación',
+    roomNew: 'Habitación nueva',
+    deleteRoom: 'Borrar habitación',
+
+    taxonUnused: 'sin usar',
+    taxonFallback: 'no se puede borrar',
+    taxonFallbackHint:
+      'Otros no se borra: es donde caen las filas de cualquier categoría que quites, y por eso borrar nunca pierde datos.',
+    confirmDeletePrefix: '¿Borrar',
+    confirmDeleteMovedOne: 'pasa a',
+    confirmDeleteMovedMany: 'pasan a',
+    confirmDeleteSafe: 'No se pierde ningún importe.',
   },
 
   comparar: {

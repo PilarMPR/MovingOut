@@ -16,7 +16,41 @@ export type IsoDate = string;
 export const DIRECTIONS = ['entrada', 'salida'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
-export const CATEGORIES = [
+/**
+ * A grouping axis the user owns: a category, or a room in Muebles.
+ *
+ * `id` and `label` are two fields on purpose. The id is what an Entry stores
+ * and it never changes, so renaming "Ocio" to "Caprichos" re-titles the group
+ * instead of re-filing every row under it — and a renamed category still lines
+ * up with itself across scenarios in Comparar.
+ */
+export interface Taxon {
+  id: string;
+  label: string;
+}
+
+/**
+ * The id of a Taxon in `SavedState.categories`.
+ *
+ * Deliberately *not* a closed union any more: the category list is a blank
+ * canvas the user builds, so the strongest promise a type can make is "some
+ * id". The promise that it is a **live** id is kept by `storage.ts` instead,
+ * which re-files anything dangling onto `FALLBACK_CATEGORY` on every read.
+ */
+export type Category = string;
+
+/**
+ * The one category that cannot be deleted. Binning any other category re-files
+ * its conceptos here, so a delete never orphans a row and never loses data.
+ */
+export const FALLBACK_CATEGORY = 'otros';
+
+/**
+ * What a fresh install starts with. Ids are code and live here; their Spanish
+ * labels are UI copy and live in `src/i18n/es.ts` (IND008). Every one of these
+ * is deletable and renameable — they are a starting point, not a schema.
+ */
+export const DEFAULT_CATEGORY_IDS = [
   'vivienda',
   'suministros',
   'consumibles',
@@ -26,9 +60,9 @@ export const CATEGORIES = [
   'impuestos',
   'ingresos',
   'mobiliario',
-  'otros',
+  FALLBACK_CATEGORY,
 ] as const;
-export type Category = (typeof CATEGORIES)[number];
+export type DefaultCategoryId = (typeof DEFAULT_CATEGORY_IDS)[number];
 
 export const FREQUENCIES = ['mensual', 'bimestral', 'trimestral', 'anual', 'unico'] as const;
 export type Frequency = (typeof FREQUENCIES)[number];
@@ -39,8 +73,14 @@ export type Priority = (typeof PRIORITIES)[number];
 export const STATUSES = ['activo', 'pausado', 'pendiente', 'pagado'] as const;
 export type Status = (typeof STATUSES)[number];
 
-export const ROOMS = ['cocina', 'salon', 'dormitorio', 'bano', 'otros'] as const;
-export type Room = (typeof ROOMS)[number];
+/** The id of a Taxon in `SavedState.rooms`. Open for the same reason Category is. */
+export type Room = string;
+
+/** The room a binned room's articles fall back to. Undeletable, like Otros. */
+export const FALLBACK_ROOM = 'otros';
+
+export const DEFAULT_ROOM_IDS = ['cocina', 'salon', 'dormitorio', 'bano', FALLBACK_ROOM] as const;
+export type DefaultRoomId = (typeof DEFAULT_ROOM_IDS)[number];
 
 export const SITUACIONES = ['estudiante', 'becario', 'empleado', 'autonomo'] as const;
 export type Situacion = (typeof SITUACIONES)[number];
@@ -63,6 +103,7 @@ export interface Entry {
   id: string;
   label: string;
   direction: Direction;
+  /** A live id from `SavedState.categories` — never a label. */
   category: Category;
   /** The *real* frequency. Normalised only at totalling time (IND004). */
   frequency: Frequency;
@@ -74,7 +115,7 @@ export interface Entry {
   hasAmount: boolean;
   /** Append-only, oldest first. */
   history: Revision[];
-  /** Furniture only. */
+  /** Furniture only, and what *makes* it furniture. A live id from `SavedState.rooms`. */
   room?: Room;
   /** Links to a PurchaseProject. */
   projectId?: string;
@@ -147,4 +188,15 @@ export interface SavedState {
   activeScenarioId: string;
   compareIds: string[];
   settings: Settings;
+  /**
+   * The two grouping axes, app-wide rather than per-scenario.
+   *
+   * Shared on purpose: Comparar puts scenarios side by side, and a breakdown
+   * can only be compared against another one drawn on the same axis. If each
+   * scenario carried its own list, "Vivienda" in one would be a different
+   * thing from "Vivienda" in the next and the comparison would quietly stop
+   * meaning anything.
+   */
+  categories: Taxon[];
+  rooms: Taxon[];
 }

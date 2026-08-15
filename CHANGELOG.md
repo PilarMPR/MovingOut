@@ -8,6 +8,33 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — the categories are yours, and a new scenario starts blank
+
+The app shipped with ten categories and five rooms baked into `src/types.ts` as closed unions, and poured a 77-row checklist into every new scenario. Both were predictions made before anyone had used it. They are now a starting point you can edit instead of a schema you cannot.
+
+> **Storage schema v3.** A v2 payload loads unchanged: it has no `categories` key, so it gets the shipped lists, and every entry already points at one of their ids. Nothing to export or re-import.
+
+### Added
+- **Editable categories and rooms**, managed in two new Ajustes panels. Each row is its label; the count beside it is how many entries hold it across *every* scenario; the bin removes it. `+ Añadir categoría` / `+ Añadir habitación` at the foot of each list.
+- **`SavedState.categories` and `SavedState.rooms`** — `Taxon[]`, app-wide rather than per-scenario. Shared on purpose: Comparar puts scenarios side by side, and a breakdown can only be compared against one drawn on the same axis. Per-scenario lists would make "Vivienda" in one a different thing from "Vivienda" in the next.
+- **`src/lib/taxonomy.ts`** — the pure operations (add, rename, remove, merge, re-file, count) plus the shipped default lists, with 11 tests.
+- **A `Punto de partida` panel in Ajustes** with `Cargar checklist · 77`. The checklist did not go away; it stopped being mandatory.
+
+### Changed
+- **A new scenario has no entries at all.** `newScenario()` returns `entries: []`. Costes says so — *"Escenario en blanco. Añade el primer concepto abajo, o carga la checklist desde Ajustes"* — which is a different sentence from the over-filtered empty state, because the two look identical and mean opposite things.
+- **`Category` and `Room` are now open string ids**, not closed unions. What keeps an entry pointed at something real moved from the type system to `storage.ts`, which re-files anything dangling onto the fallback on every read.
+- **`es.category` / `es.room` label the *shipped* set only.** Anything the user adds carries its own label and never passes through i18n — which is the line IND008 actually draws: app copy is translated, user content is not.
+- **`furnitureByRoom()` takes the room list as an argument** rather than reading a constant, and files an article whose room has been binned into the fallback group instead of dropping it.
+
+### Notes
+- **Deleting a category re-files its rows onto `Otros` rather than deleting them**, and the confirm says how many will move. `Otros` therefore cannot itself be deleted — its bin is visibly disabled rather than merely inert — because it is what makes every other delete non-destructive.
+- **Renaming touches the label and nothing else.** Ids are generated (`c_`/`r_` prefixed) and permanent, so "Ocio" → "Caprichos" re-titles the group without re-filing a single row, and the renamed category still lines up with itself across scenarios.
+- **A room re-files rather than clears.** `room !== undefined` is what makes an Entry furniture, so clearing it would teleport a wardrobe out of Muebles and into the Costes grid.
+- A category filter that outlives the category it points at is treated as no filter. Otherwise binning `Ocio` while filtering by it would blank the grid with nothing on screen to undo it — and on mobile there is no category chip to undo it with.
+- Verified against the packaged `dist/` through the desktop shell's `app://movingout` origin: blank first run, add/rename/delete, checklist load (77 entries, 33 furniture, 0 dangling), a delete moving 6 rows onto `Otros`, and a reload proving all of it persisted at v3.
+
+---
+
 ## Unreleased — a desktop app and an Android app, from the same `dist/`
 
 Neither is a port. Both shells wrap exactly the build the web target already produced; there is no platform-specific source anywhere in the repo, and `src/` was not touched.

@@ -8,9 +8,20 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Cents, Entry, PurchaseProject, SavedState, Scenario, Settings } from '../types';
+import { FALLBACK_CATEGORY, FALLBACK_ROOM } from '../types';
 import { derive, type Derived } from '../lib/derive';
 import { pushRevision, today } from '../lib/history';
 import { newId } from '../lib/id';
+import { seedEntries, seedTaxonomy } from '../lib/seed';
+import {
+  PREFIX,
+  addTaxon,
+  mergeTaxa,
+  refileCategory,
+  refileRoom,
+  removeTaxon,
+  renameTaxon,
+} from '../lib/taxonomy';
 import { DEFAULTS, load, newScenario, save, clear } from '../lib/storage';
 
 export interface Store {
@@ -33,6 +44,21 @@ export interface Store {
   addProject: (name: string) => void;
   patchProject: (id: string, patch: Partial<PurchaseProject>) => void;
   removeProject: (id: string) => void;
+
+  /**
+   * The two taxonomies. App-wide, so every one of these writes reaches every
+   * scenario — which is the price of Comparar sharing an axis, and the reason
+   * `removeCategory` re-files across the whole list rather than the active one.
+   */
+  addCategory: (label: string) => void;
+  renameCategory: (id: string, label: string) => void;
+  removeCategory: (id: string) => void;
+  addRoom: (label: string) => void;
+  renameRoom: (id: string, label: string) => void;
+  removeRoom: (id: string) => void;
+
+  /** Pours the seeded checklist into the active scenario. Adds; never replaces. */
+  loadChecklist: () => void;
 
   patchSettings: (patch: Partial<Settings>) => void;
   setCompareIds: (ids: string[]) => void;
@@ -229,6 +255,61 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     [mapActive],
   );
 
+  const addCategory = useCallback((label: string) => {
+    setState((prev) => ({ ...prev, categories: addTaxon(prev.categories, label, PREFIX.category) }));
+  }, []);
+
+  const renameCategory = useCallback((id: string, label: string) => {
+    // Label only. Nothing re-files, because entries point at the id (types.ts § Taxon).
+    setState((prev) => ({ ...prev, categories: renameTaxon(prev.categories, id, label) }));
+  }, []);
+
+  const removeCategory = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      categories: removeTaxon(prev.categories, id, FALLBACK_CATEGORY),
+      scenarios: prev.scenarios.map((s) => ({
+        ...s,
+        entries: refileCategory(s.entries, id, FALLBACK_CATEGORY),
+      })),
+    }));
+  }, []);
+
+  const addRoom = useCallback((label: string) => {
+    setState((prev) => ({ ...prev, rooms: addTaxon(prev.rooms, label, PREFIX.room) }));
+  }, []);
+
+  const renameRoom = useCallback((id: string, label: string) => {
+    setState((prev) => ({ ...prev, rooms: renameTaxon(prev.rooms, id, label) }));
+  }, []);
+
+  const removeRoom = useCallback((id: string) => {
+    setState((prev) => ({
+      ...prev,
+      rooms: removeTaxon(prev.rooms, id, FALLBACK_ROOM),
+      scenarios: prev.scenarios.map((s) => ({
+        ...s,
+        entries: refileRoom(s.entries, id, FALLBACK_ROOM),
+      })),
+    }));
+  }, []);
+
+  const loadChecklist = useCallback(() => {
+    setState((prev) => {
+      // Restore any category or room the checklist files under and this install
+      // has since binned; without it thirty rows would land in Otros at once.
+      const required = seedTaxonomy();
+      return {
+        ...prev,
+        categories: mergeTaxa(prev.categories, required.categories),
+        rooms: mergeTaxa(prev.rooms, required.rooms),
+        scenarios: prev.scenarios.map((s) =>
+          s.id === prev.activeScenarioId ? { ...s, entries: [...s.entries, ...seedEntries()] } : s,
+        ),
+      };
+    });
+  }, []);
+
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setState((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
   }, []);
@@ -260,6 +341,13 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     addProject,
     patchProject,
     removeProject,
+    addCategory,
+    renameCategory,
+    removeCategory,
+    addRoom,
+    renameRoom,
+    removeRoom,
+    loadChecklist,
     patchSettings,
     setCompareIds,
     replaceAll,

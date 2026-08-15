@@ -11,7 +11,6 @@
 import type {
   Buffer,
   Cents,
-  Category,
   Direction,
   Entry,
   Frequency,
@@ -24,30 +23,40 @@ import type {
   Settings,
   Situacion,
   Status,
-  Room,
+  Taxon,
 } from '../types';
 import {
-  CATEGORIES,
   DIRECTIONS,
+  FALLBACK_CATEGORY,
+  FALLBACK_ROOM,
   FREQUENCIES,
   PRIORITIES,
-  ROOMS,
   SITUACIONES,
   STATUSES,
 } from '../types';
 import { es } from '../i18n/es';
 import { newId } from './id';
-import { seedEntries } from './seed';
+import { defaultCategories, defaultRooms } from './taxonomy';
 import { today } from './history';
 
 const KEY = 'movingout.state';
-const SCHEMA_VERSION = 2;
+/** v3 added the editable `categories` / `rooms` lists and stopped seeding scenarios. */
+const SCHEMA_VERSION = 3;
 
 /** ~a third of income is the usual rule of thumb; it is editable in Ajustes. */
 const DEFAULT_MAX_RENT_PERCENT = 32;
 
 // ── construction ─────────────────────────────────────────────────────────
 
+/**
+ * A blank scenario — no entries at all.
+ *
+ * It used to arrive holding the whole seeded checklist. It does not any more:
+ * the checklist is a prediction from `docs/COST-CHECKLIST.md`, and opening on
+ * 75 rows you did not write makes the first task deleting the wrong ones
+ * instead of typing the right ones. `loadChecklist()` in the store pours it in
+ * on request, from Ajustes.
+ */
 export function newScenario(name: string): Scenario {
   return {
     id: newId('s'),
@@ -56,7 +65,7 @@ export function newScenario(name: string): Scenario {
     createdAt: today(),
     savingsCents: 0,
     buffer: { targetCents: 0 },
-    entries: seedEntries(),
+    entries: [],
     projects: [],
   };
 }
@@ -67,6 +76,10 @@ const DEFAULT_SETTINGS = (): Settings => ({ maxRentPercent: DEFAULT_MAX_RENT_PER
  * A fresh install. Written as a concise arrow body on purpose: the IND003
  * parity check reads the depth-1 keys of this literal and asserts every one of
  * them is backfilled below.
+ *
+ * The scenario is empty but the two taxonomies are not: an empty category list
+ * would leave the Costes select with nothing to pick, so the shipped set is
+ * the canvas, and every one of its rows is deletable.
  */
 export const DEFAULTS = (first: Scenario = newScenario(es.scenario.firstName)): SavedState => ({
   version: SCHEMA_VERSION,
@@ -74,6 +87,8 @@ export const DEFAULTS = (first: Scenario = newScenario(es.scenario.firstName)): 
   activeScenarioId: first.id,
   compareIds: [first.id],
   settings: DEFAULT_SETTINGS(),
+  categories: defaultCategories(),
+  rooms: defaultRooms(),
 });
 
 // ── coercion helpers ─────────────────────────────────────────────────────
@@ -110,6 +125,16 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
     : fallback;
 }
 
+/**
+ * The open-set version of `oneOf`, for the two lists the user edits. An id
+ * that is not in the live list re-files onto the fallback, which is how a
+ * category deleted on another device — or in a hand-edited export — stops
+ * being able to hide rows from every screen at once.
+ */
+function knownId(value: unknown, allowed: ReadonlySet<string>, fallback: string): string {
+  return typeof value === 'string' && allowed.has(value) ? value : fallback;
+}
+
 function date(value: unknown, fallback: IsoDate): IsoDate {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback;
 }
@@ -131,7 +156,42 @@ function ensureRevision(raw: unknown, fallbackDate: IsoDate): Revision {
   return revision;
 }
 
-function ensureEntry(raw: unknown, createdAt: IsoDate): Entry {
+/** The live ids of both axes, threaded down so entries can be checked against them. */
+interface KnownIds {
+  categories: ReadonlySet<string>;
+  rooms: ReadonlySet<string>;
+}
+
+/**
+ * One taxonomy list. An absent key means a payload written before v3, which
+ * gets the shipped set; a present one is trusted but tidied — blank and
+ * duplicate ids dropped, and the fallback put back if it went missing, because
+ * `removeCategory` needs somewhere to put the rows it displaces.
+ */
+function ensureTaxonomy(raw: unknown, fallbackId: string, shipped: () => Taxon[]): Taxon[] {
+  if (!Array.isArray(raw)) return shipped();
+
+  const seen = new Set<string>();
+  const taxa: Taxon[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) continue;
+    const id = str(item.id, '');
+    if (id === '' || seen.has(id)) continue;
+    seen.add(id);
+    // A blank label would render as an unclickable sliver, so it falls back to
+    // the id: ugly on screen beats invisible on screen.
+    taxa.push({ id, label: str(item.label, '') === '' ? id : str(item.label, id) });
+  }
+
+  if (taxa.length === 0) return shipped();
+  if (!seen.has(fallbackId)) {
+    const fallback = shipped().find((taxon) => taxon.id === fallbackId);
+    if (fallback !== undefined) taxa.push(fallback);
+  }
+  return taxa;
+}
+
+function ensureEntry(raw: unknown, createdAt: IsoDate, known: KnownIds): Entry {
   const r = isRecord(raw) ? raw : {};
   const history = list(r.history).map((revision) => ensureRevision(revision, createdAt));
   const amountCents = cents(r.amountCents, 0);
@@ -140,7 +200,7 @@ function ensureEntry(raw: unknown, createdAt: IsoDate): Entry {
     id: str(r.id, newId('e')),
     label: str(r.label, ''),
     direction: oneOf<Direction>(r.direction, DIRECTIONS, 'salida'),
-    category: oneOf<Category>(r.category, CATEGORIES, 'otros'),
+    category: knownId(r.category, known.categories, FALLBACK_CATEGORY),
     frequency: oneOf<Frequency>(r.frequency, FREQUENCIES, 'mensual'),
     priority: oneOf<Priority>(r.priority, PRIORITIES, 'deseable'),
     status: oneOf<Status>(r.status, STATUSES, 'activo'),
@@ -151,7 +211,9 @@ function ensureEntry(raw: unknown, createdAt: IsoDate): Entry {
     history,
   };
 
-  const room = typeof r.room === 'string' ? oneOf<Room>(r.room, ROOMS, 'otros') : undefined;
+  // `room !== undefined` is what makes an Entry furniture, so an unknown room
+  // re-files rather than clears: clearing it would move a wardrobe into Costes.
+  const room = typeof r.room === 'string' ? knownId(r.room, known.rooms, FALLBACK_ROOM) : undefined;
   if (room !== undefined) entry.room = room;
   const projectId = optionalStr(r.projectId);
   if (projectId !== undefined) entry.projectId = projectId;
@@ -181,7 +243,7 @@ function ensureBuffer(raw: unknown): Buffer {
   return { targetCents: cents(r.targetCents, 0) };
 }
 
-function ensureScenario(raw: unknown): Scenario {
+function ensureScenario(raw: unknown, known: KnownIds): Scenario {
   const r = isRecord(raw) ? raw : {};
   const createdAt = date(r.createdAt, today());
   const scenario: Scenario = {
@@ -191,7 +253,7 @@ function ensureScenario(raw: unknown): Scenario {
     createdAt,
     savingsCents: cents(r.savingsCents, 0),
     buffer: ensureBuffer(r.buffer),
-    entries: list(r.entries).map((entry) => ensureEntry(entry, createdAt)),
+    entries: list(r.entries).map((entry) => ensureEntry(entry, createdAt, known)),
     projects: list(r.projects).map((project) => ensureProject(project, createdAt)),
   };
   const note = optionalStr(r.note);
@@ -213,7 +275,16 @@ function ensureSettings(raw: unknown): Settings {
 export function ensureShape(raw: unknown): SavedState {
   const r = isRecord(raw) ? raw : {};
 
-  const scenarios = list(r.scenarios).map(ensureScenario);
+  // Both taxonomies are read first: they are the vocabulary every entry below
+  // is checked against, so the order here is not cosmetic.
+  const categories = ensureTaxonomy(r.categories, FALLBACK_CATEGORY, defaultCategories);
+  const rooms = ensureTaxonomy(r.rooms, FALLBACK_ROOM, defaultRooms);
+  const known: KnownIds = {
+    categories: new Set(categories.map((taxon) => taxon.id)),
+    rooms: new Set(rooms.map((taxon) => taxon.id)),
+  };
+
+  const scenarios = list(r.scenarios).map((scenario) => ensureScenario(scenario, known));
   if (scenarios.length === 0) scenarios.push(newScenario(es.scenario.firstName));
 
   const ids = new Set(scenarios.map((scenario) => scenario.id));
@@ -229,6 +300,8 @@ export function ensureShape(raw: unknown): SavedState {
     activeScenarioId,
     compareIds,
     settings: ensureSettings(r.settings),
+    categories,
+    rooms,
   };
 }
 

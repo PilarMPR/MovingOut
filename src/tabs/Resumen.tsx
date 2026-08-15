@@ -7,6 +7,7 @@ import { Tag } from '../components/Tag';
 import { VERDICT_DOT } from '../components/VerdictTag';
 import { es, plural } from '../i18n/es';
 import { formatEUR, formatMonths, formatPercent } from '../lib/money';
+import { labelOf } from '../lib/taxonomy';
 import type { Derived, SixthKpi } from '../lib/derive';
 import type { Store } from '../state/store';
 
@@ -296,7 +297,7 @@ export function Resumen({ store }: { store: Store }) {
               {breakdown.map((slice, i) => (
                 <BreakdownBar
                   key={slice.category}
-                  label={es.category[slice.category]}
+                  label={labelOf(state.categories, slice.category)}
                   percent={slice.percent}
                   fraction={largest === 0 ? 0 : (slice.monthlyCents / largest) * 0.92}
                   amountCents={slice.monthlyCents}

@@ -11,12 +11,31 @@ Load-bearing: a review should read this first and scrutinise whatever is at the 
 | ID | occurrences | last seen |
 |---|---|---|
 | IND001 | 1 | 2026-08-09 |
+| IND003 | 1 | 2026-08-15 |
 
-The invariants in `CLAUDE.md` are still mostly **seeded predictions**, not earned lessons — one of them has now earned its place. An entry that never appears in this table over a few months of real work should be deleted from that list rather than kept out of politeness.
+The invariants in `CLAUDE.md` are still mostly **seeded predictions**, not earned lessons — two of them have now earned their place. An entry that never appears in this table over a few months of real work should be deleted from that list rather than kept out of politeness.
 
-Notably **not** yet earned after the first build: IND002, IND003, IND005, IND006, IND007, IND008 never fired on real code. IND004 never fired either, but only because `toMonthly()` was written before anything that could sum.
+Notably **not** yet earned: IND002, IND005, IND006, IND007, IND008 have never fired on real code. IND004 never fired either, but only because `toMonthly()` was written before anything that could sum.
+
+IND003 is worth reading as the model case: it stayed silent through the entire build, because defaults and backfill are one thought when the schema is written in a single sitting, and fired the moment a field was added months later — which is the only case it was ever for. **A check that is idle during construction is not necessarily a check that is useless.**
 
 ## Entries
+
+## 2026-08-15 · Categories became data, and IND003 fired for the first time · IND003
+
+**What happened.** The ten categories and five rooms were closed unions in `types.ts`. They are now `Taxon[]` lists in `SavedState`, editable from Ajustes, and a new scenario arrives with no entries at all instead of the 77-row checklist.
+
+**IND003 caught the missing backfill, on the first edit, exactly as designed.** Adding `categories` and `rooms` to `DEFAULTS()` blocked the write: *"DEFAULTS defines `categories` but ensureShape never backfills it"*. The check is a crude one — it parses the depth-1 keys of the `DEFAULTS()` literal and greps `ensureShape`'s block for each name — and crude was enough. This is the **second** invariant to earn its place rather than be predicted into existence, and worth noting *why* it fired here when it never fired during the build: the original schema was written in one sitting, where defaults and backfill are the same thought. It fires when a field is added months later, which is the case it was written for and the case that had never happened yet.
+
+**The rename/re-file split is the whole design.** A category has an opaque generated id and an editable label, and entries store the id. That makes renaming free — "Ocio" → "Caprichos" re-titles the group and moves nothing — and it keeps a renamed category comparable with itself across scenarios in Comparar. The alternative, storing the label on the entry, is simpler until the first rename, at which point it is a bulk migration that silently splits history.
+
+**Deleting is where a category editor actually gets dangerous, and the fallback is what defuses it.** Three options were on the table: block the delete while in use, delete the rows with it, or re-file them. Re-filing onto `Otros` was chosen, which then forces `Otros` to be undeletable — and *that* is the constraint the rest leans on. `removeTaxon` always has somewhere to put displaced rows; `storage.ts` always has something to coerce a dangling id onto; the Costes `<select>` can never be empty. One guaranteed row is doing a surprising amount of load-bearing work, so its bin is rendered visibly disabled rather than simply doing nothing when clicked.
+
+**`room` re-files rather than clears, and the reason is a one-line function elsewhere.** `isFurniture(entry)` is `entry.room !== undefined`. So the obvious cleanup on deleting a room — clear the field — would move every article in it out of Muebles and into the Costes grid, as ordinary conceptos, with no error anywhere. **A field that means "which group" and a field that means "which tab" being the same field is the kind of coupling that only bites at deletion time.** Recorded because the same trap is waiting for anything that later makes `projectId` deletable.
+
+**Two things the type change gave up, deliberately.** `Category` is now `string`, so the compiler no longer proves a category exists — the guarantee moved to `ensureShape`, at read time. And `es.category` lost its exhaustiveness check over the full set; it now `satisfies Record<DefaultCategoryId, string>`, covering only the shipped ids. Both are the correct trade for a list the user owns, but they are real losses: the failure mode moved from "won't compile" to "a row lands in Otros", which is quieter. That is why the backfill has its own tests rather than being assumed.
+
+**Verified by driving the packaged build, not the dev server.** Following the 2026-08-11 lesson: a script loaded the real `dist/` over `app://movingout`, cleared storage, and drove the actual DOM — blank first run, add, rename, checklist load, delete-with-refile, reload. It caught two things tests would not have: the row layout stretched to 1400 px, stranding each count and bin at the far edge of the panel, and one probe of my own indexed the last bin in the list *after* a new category had been appended below `Otros`, reporting the fallback as unlocked when it was not. **The app was right and the check was wrong** — worth remembering that a driver script is also code, and its failures read exactly like product bugs. Two Electron re-learns, both already in this log and both hit again: `ELECTRON_RUN_AS_NODE=1` is inherited from VSCode and has to be unset, and `executeJavaScript` calls share one global scope, so a second `const rows = …` throws a redeclaration that surfaces only as "Script failed to execute".
 
 ## 2026-08-15 · "The desktop app won't open" — it was opening the whole time · no ID
 

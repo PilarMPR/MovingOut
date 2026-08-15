@@ -17,6 +17,8 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 > Step 12 — the re-skin to the Claude Design project *Moving out finances app* (`Independencia.dc.html`) — landed on 2026-08-11: a new palette and type stack, a `Sistema` tab, and layout changes to Resumen, Costes, Muebles, Historial and Comparar. **`npm install` is required after pulling**: the mono and body faces changed packages. `tsc` clean, 85 tests over `src/lib` green, production build succeeds.
 >
 > **Also 2026-08-11: it runs as a desktop app and as an Android APK**, both wrapping the same `dist/` — Electron (`electron/main.cjs`) and Capacitor (`android/`). A `.desktop` entry is installed locally; the APK is debug-signed and built but **not yet installed on a phone**. Still nothing deployed to a public URL. See `CHANGELOG.md`.
+>
+> **2026-08-15: the categories and rooms became the user's, and a new scenario starts blank.** Both lists are editable in Ajustes; the seeded checklist is now a button rather than a default. Storage schema **v3**, read-compatible with v2. See [Taxonomy](#taxonomy--the-categories-and-rooms-are-the-users) below — it holds rules that are easy to undo by accident.
 
 > **Node lives at `/home/p/.local/share/node/bin` and is not on `PATH`.** `export PATH="/home/p/.local/share/node/bin:$PATH"` before any `npm` command, or every script in the next section reports "command not found" and it looks like the toolchain is missing when it is not.
 
@@ -77,15 +79,15 @@ Entry {
   id
   label            // "Alquiler", "Beca", "Detergente"
   direction        // 'entrada' | 'salida'
-  category         // vivienda | suministros | consumibles | alimentacion |
-                   // transporte | ocio | impuestos | ingresos | mobiliario | otros
+  category         // a live id from SavedState.categories — see Taxonomy below
   frequency        // 'mensual' | 'bimestral' | 'trimestral' | 'anual' | 'unico'
   priority         // 'esencial' | 'deseable'
   status           // 'activo' | 'pausado' | 'pendiente' | 'pagado'
   amountCents      // integer, ALWAYS POSITIVE
   hasAmount        // false means blank — which is NOT zero
   history[]        // append-only [{ date, amountCents, note? }]
-  room?            // furniture only: cocina | salon | dormitorio | bano | otros
+  room?            // furniture only: a live id from SavedState.rooms.
+                   // Its presence is what MAKES an entry furniture
   projectId?       // links to a PurchaseProject
   note?
   refundable?      // the fianza: counts in upfrontCash, never in actualSpend
@@ -100,6 +102,20 @@ Entry {
 **Frequency.** Stored as the *real* frequency and normalised only when totalling. Water and gas are commonly billed **bimonthly** in Spain, and insurance annually; a budget that assumes everything is monthly is wrong before you start. See `IND004`.
 
 **Status** is what makes the table live rather than a snapshot: `pausado` keeps a row without counting it, `pendiente` / `pagado` track one-offs you have not bought yet.
+
+### Taxonomy — the categories and rooms are the user's
+
+`Taxon { id, label }`. Two lists, `SavedState.categories` and `SavedState.rooms`, and both are **app-wide, not per-scenario** — Comparar puts scenarios side by side, and a breakdown can only be compared against one drawn on the same axis. All the operations live in `src/lib/taxonomy.ts`.
+
+The rules that keep it from quietly losing data:
+
+- **Ids are opaque and permanent; labels are editable.** An entry stores the id, so renaming "Ocio" to "Caprichos" re-titles the group and re-files nothing. **Never store a label on an entry.**
+- **`otros` exists in both lists and cannot be deleted.** Deleting any other category re-files its entries onto it — across *every* scenario, since the lists are app-wide — so a delete never orphans a row. Its bin renders visibly disabled. A great deal leans on this one row existing: `removeTaxon` always has a destination, `ensureShape` always has something to coerce onto, and the Costes `<select>` can never be empty.
+- **Deleting a room re-files, it does not clear.** `room !== undefined` is what makes an Entry furniture, so clearing it would move an article out of Muebles and into the Costes grid with no error anywhere.
+- **`Category` and `Room` are `string`, not unions.** The compiler no longer proves a category exists; `storage.ts` does, at read time, by coercing any dangling id onto the fallback. That trade is deliberate and it moved the failure mode from "won't compile" to "lands in Otros", which is why the backfill is tested rather than assumed.
+- **`es.category` / `es.room` label the shipped set only** (`satisfies Record<DefaultCategoryId, string>`). A user-created label is data and never passes through i18n — that is the line IND008 draws: app copy is translated, user content is not.
+
+**A new scenario is blank** — `newScenario()` returns `entries: []`. The seeded checklist is still in `src/lib/seed.ts` and is now a button in Ajustes (`Cargar checklist`), because it is a prediction from `docs/COST-CHECKLIST.md` and arriving to 77 rows you did not write makes the first task deleting the wrong ones. Loading it restores any category or room it files under that you have since binned.
 
 ### The rest
 
@@ -227,7 +243,9 @@ python3 .claude/tools/check.py           # changed lines
 python3 .claude/tools/check.py --all     # whole tree
 ```
 
-> **Mostly seeded, one earned.** The sibling repo's invariants each came from a bug that actually happened; this table started as a prediction from the shape of the stack. After the first build, **`IND001` has fired for real** — on a locale bug in the amount parser, not a float — and the rest have not fired once. Treat the unfired ones as provisional: an entry that never fires should be deleted, and a failure that recurs in [`docs/DEVLOG.md`](docs/DEVLOG.md) three times should be promoted **into** it with a check in `check.py`.
+> **Mostly seeded, two earned.** The sibling repo's invariants each came from a bug that actually happened; this table started as a prediction from the shape of the stack. **`IND001` fired for real** on a locale bug in the amount parser, not a float; **`IND003` fired** when `categories` and `rooms` were added to the saved payload without a backfill, and blocked the write. The rest have not fired once. Treat the unfired ones as provisional: an entry that never fires should be deleted, and a failure that recurs in [`docs/DEVLOG.md`](docs/DEVLOG.md) three times should be promoted **into** it with a check in `check.py`.
+>
+> IND003 is the argument against pruning too early: it was silent through the whole build — defaults and backfill are one thought when the schema is written in a single sitting — and fired the first time a field was added months later, which is the only case it was ever for.
 
 | ID | Invariant | Detail |
 |---|---|---|
@@ -282,8 +300,8 @@ English for `CLAUDE.md`, `.claude/`, `docs/`, `CHANGELOG.md`, code identifiers, 
 
 The build order is done and the re-skin has landed, type-checked, tested and built. What is left is the part only real use can drive:
 
-1. **Fill in one real scenario** and see whether the seeded checklist is missing anything — the seed is a prediction from `COST-CHECKLIST.md`, not a used list.
+1. **Build one real scenario from the blank canvas** — type the conceptos that actually apply, add the categories that are missing, bin the ones that are not. That is now the primary way to find out whether `COST-CHECKLIST.md` predicted well: what you reach for and cannot find is the gap. Load the checklist afterwards to see what it would have added and you did not need.
 2. **Install the APK on the phone** — `android:apk` produces a debug-signed one, and `adb install` needs a device connected (there was none when it was built). The export/import round-trip is the only backup story, so it wants testing on the device that will actually hold the data. A **static deploy is now optional rather than the only route onto the phone**, but it is still the easiest way to reinstall.
-3. **Prune the invariants.** Seven of the eight have never fired. After a few weeks of real edits, delete the ones that never do — `docs/DEVLOG.md` has the recurrence table.
+3. **Prune the invariants.** Six of the eight have never fired. After a few weeks of real edits, delete the ones that never do — `docs/DEVLOG.md` has the recurrence table, and its IND003 note is the case for patience with the ones that only matter at change time.
 
 Known soft spots, in case one bites: `<input type="date">` renders in the *browser's* locale, not the document's; and a near-zero deficit produces an honest but startling runway (a 12 €/mes gap against 4 900 € of savings is genuinely 408 months).

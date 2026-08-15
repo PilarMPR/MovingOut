@@ -8,16 +8,9 @@ import { es, plural } from '../i18n/es';
 import { toMonthly } from '../lib/frequency';
 import { delta, formatDate } from '../lib/history';
 import { formatEUR, formatSignedEUR, formatSignedPercent } from '../lib/money';
+import { idsOf, labelsOf } from '../lib/taxonomy';
 import type { Store } from '../state/store';
-import {
-  CATEGORIES,
-  DIRECTIONS,
-  FREQUENCIES,
-  PRIORITIES,
-  STATUSES,
-  type Category,
-  type Entry,
-} from '../types';
+import { DIRECTIONS, FREQUENCIES, PRIORITIES, STATUSES, type Category, type Entry } from '../types';
 
 export type DirectionFilter = 'all' | 'entrada' | 'salida';
 export type PriorityFilter = 'all' | 'esencial' | 'deseable';
@@ -101,11 +94,14 @@ function MonthlyEquivalent({ entry }: { entry: Entry }) {
 interface RowProps {
   entry: Entry;
   store: Store;
+  /** The live category list, built once per render rather than once per row. */
+  categoryIds: string[];
+  categoryLabels: Record<string, string>;
   open: boolean;
   onToggle: () => void;
 }
 
-function Row({ entry, store, open, onToggle }: RowProps) {
+function Row({ entry, store, categoryIds, categoryLabels, open, onToggle }: RowProps) {
   const incoming = entry.direction === 'entrada';
   const revisions = entry.history.length;
   const d = delta(entry);
@@ -152,8 +148,8 @@ function Row({ entry, store, open, onToggle }: RowProps) {
         <td>
           <Select
             value={entry.category}
-            options={CATEGORIES}
-            labels={es.category}
+            options={categoryIds}
+            labels={categoryLabels}
             ariaLabel={es.costes.colCategory}
             onChange={(category) => store.patchEntry(entry.id, { category })}
           />
@@ -280,10 +276,21 @@ interface Props {
 export function Costes({ store, filters, onFilters }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const { costes, coverage, totals, verdict } = store.derived;
-  const rows = applyFilters(costes, filters);
+  const categoryIds = idsOf(store.state.categories);
+  const categoryLabels = labelsOf(store.state.categories);
+
+  // A category filter can outlive the category it points at — bin "Ocio" while
+  // filtering by it and the grid would go blank with no way back. Treat a dead
+  // filter as no filter rather than as an empty result.
+  const live: Filters =
+    filters.category === 'all' || categoryLabels[filters.category] !== undefined
+      ? filters
+      : { ...filters, category: 'all' };
+
+  const rows = applyFilters(costes, live);
   const missing = coverage.total - coverage.withAmount;
 
-  const set = (patch: Partial<Filters>) => onFilters({ ...filters, ...patch });
+  const set = (patch: Partial<Filters>) => onFilters({ ...live, ...patch });
 
   const balanceTone =
     verdict === 'falta' ? 'neg' : verdict === 'justo' ? 'warn' : verdict === 'ok' ? 'pos' : 'quiet';
@@ -350,14 +357,14 @@ export function Costes({ store, filters, onFilters }: Props) {
 
         <select
           className="chip spacer"
-          value={filters.category}
+          value={live.category}
           aria-label={es.costes.colCategory}
           onChange={(event) => set({ category: event.target.value as Category | 'all' })}
         >
           <option value="all">{es.costes.colCategory}</option>
-          {CATEGORIES.map((category) => (
-            <option key={category} value={category}>
-              {es.category[category]}
+          {store.state.categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.label}
             </option>
           ))}
         </select>
@@ -384,6 +391,8 @@ export function Costes({ store, filters, onFilters }: Props) {
                 key={entry.id}
                 entry={entry}
                 store={store}
+                categoryIds={categoryIds}
+                categoryLabels={categoryLabels}
                 open={open === entry.id}
                 onToggle={() => setOpen(open === entry.id ? null : entry.id)}
               />
@@ -392,7 +401,11 @@ export function Costes({ store, filters, onFilters }: Props) {
             {rows.length === 0 && (
               <tr>
                 <td colSpan={9}>
-                  <div className="empty-note">{es.costes.emptyList}</div>
+                  {/* An empty scenario and an over-filtered one look identical
+                      and mean opposite things, so they say different words. */}
+                  <div className="empty-note">
+                    {costes.length === 0 ? es.costes.emptyScenario : es.costes.emptyList}
+                  </div>
                 </td>
               </tr>
             )}
@@ -404,7 +417,7 @@ export function Costes({ store, filters, onFilters }: Props) {
                 <div className="totstrip">
                   <span>
                     {es.costes.totalRow} ·{' '}
-                    {isFiltered(filters) ? es.costes.totalFiltered : es.costes.totalAll} ·{' '}
+                    {isFiltered(live) ? es.costes.totalFiltered : es.costes.totalAll} ·{' '}
                     {rows.length}{' '}
                     {plural(rows.length, es.costes.totalConcept, es.costes.totalConcepts)}
                   </span>
