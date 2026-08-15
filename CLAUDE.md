@@ -36,7 +36,11 @@ npm run android:apk  # debug APK via Gradle
 
 **There is deliberately no AppImage.** It was built for a while and it never ran here: it needs `libfuse.so.2`, this machine has FUSE 3, and the compat package needs sudo. Leaving it in `release/` meant the most double-clickable file was the one that could not work, which cost an afternoon of "the desktop app won't open" when the desktop app was fine. `tar.gz` unpacks and runs anywhere with no FUSE. Artifact versions come from `package.json` — bump it and `android/app/build.gradle` together.
 
-**The app runs locally from `release/linux-unpacked/movingout`**, via a `.desktop` entry in `~/.local/share/applications/`. Note that it may open on a **different workspace** than the one you are on — which also reads as "it didn't open". `wmctrl -lG | grep MovingOut` settles it in one line.
+**The installed app lives at `~/.local/opt/movingout/`**, with a `.desktop` entry in `~/.local/share/applications/` pointing at it. Installing is a copy: `cp -r release/linux-unpacked ~/.local/opt/movingout`.
+
+It deliberately does **not** run from `release/`. That directory is build output — gitignored, and wiped by `rm -rf release` on any repackage — so a launcher pointing into it breaks the moment you rebuild, and worse, it runs whatever happens to be in the working tree, including someone else's half-finished feature. Package from a clean checkout of the branch, then copy.
+
+Note the app may open on a **different workspace** than the one you are on — which also reads as "it didn't open". `wmctrl -lG | grep MovingOut` settles it in one line.
 
 **The native builds need two toolchains that are not on `PATH`** — same situation as Node, below:
 
