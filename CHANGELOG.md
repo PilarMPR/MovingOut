@@ -22,6 +22,7 @@ Neither is a port. Both shells wrap exactly the build the web target already pro
 - **npm scripts**: `desktop`, `desktop:dev`, `desktop:dist`, `android`, `android:run`, `android:apk`.
 
 ### Fixed
+- **The header drew underneath the phone's status bar** — the `MOVINGOUT` wordmark sat behind the system clock. `.hdr` now carries `padding-top:env(safe-area-inset-top)`, mirroring the `padding-bottom:env(safe-area-inset-bottom)` the bottom nav has always had. The padding is on `.hdr` rather than `.hdr-bar` so the ink ground extends up *behind* the status bar instead of leaving a strip of `--bg` above it, and it is zero on any display without a system bar, so the browser and the desktop shell are unaffected. Only a real full-screen install could surface this: in a browser there is no status bar to collide with.
 - **The icons were still the pre-reskin palette**, and Android's were Capacitor's stock blue logo. The mark is now ink ground, paper `I`, `--accent-l` `N` — `--accent-l` and not `--accent`, because indigo `#4438CA` on near-black ink is a smudge at 48 px, and `tokens.css` already labels that token "the accent, legible on ink".
 - **The PWA manifest carried the old palette too** — `background_color` `#EBE4D9` and `theme_color` `#1E1813`, both from before the re-skin. Now `#EFEDE7` / `#17191C`. On Android these are what the splash and status bar are painted with, so the packaging is what made it visible. Same fix to the `theme-color` meta in `index.html`.
 

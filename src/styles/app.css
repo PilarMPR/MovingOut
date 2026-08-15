@@ -30,8 +30,12 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 /* ── app shell ─────────────────────────────────────────────── */
 .shell{min-height:100%;display:flex;flex-direction:column;}
 
+/* padding-top, not margin, so the ink ground extends up *behind* the status bar
+   rather than leaving a strip of --bg above it. Mirrors .mnav at the bottom.
+   Zero everywhere that has no system bar, so the browser and desktop are
+   unaffected. */
 .hdr{position:sticky;top:0;z-index:20;background:var(--ink);color:var(--on-ink);
-  border-bottom:1px solid var(--on-ink-line);}
+  border-bottom:1px solid var(--on-ink-line);padding-top:env(safe-area-inset-top);}
 .hdr-bar{max-width:1500px;margin:0 auto;padding:9px 18px;display:flex;align-items:center;
   gap:14px;flex-wrap:wrap;}
 .hdr-id{display:flex;align-items:baseline;gap:8px;}
