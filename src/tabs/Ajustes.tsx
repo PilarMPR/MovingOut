@@ -8,6 +8,7 @@ import { formatDate } from '../lib/history';
 import { formatEUR, parseAmount, toEditableString } from '../lib/money';
 import { seedCount } from '../lib/seed';
 import { exportJson, importJson } from '../lib/storage';
+import { templateCount } from '../lib/template';
 import { countCategoryUse, countRoomUse, labelOf } from '../lib/taxonomy';
 import type { Store } from '../state/store';
 import type { Taxon } from '../types';
@@ -274,29 +275,53 @@ export function Ajustes({ store }: { store: Store }) {
         }
       />
 
-      {/* A blank scenario is the default now, so the checklist has to be
-          somewhere findable — and it says how many rows it is about to add. */}
+      {/* A blank scenario is the default now, so the two ways of not starting
+          from one have to be somewhere findable — and each says how many rows
+          it is about to add. They are opposites on purpose: the checklist is
+          structure with no prices, the template is a worked budget with them. */}
       <Panel
         label={es.ajustes.panelStart}
         body={
-          <div className="field">
-            <span className="flab">{es.ajustes.checklistTitle}</span>
-            <span className="fhint">{es.ajustes.checklistHint}</span>
-            <div className="row-actions" style={{ marginTop: 4 }}>
-              <Button
-                onClick={() => {
-                  const rows = seedCount();
-                  const question = `${es.ajustes.checklistConfirmPrefix} ${rows} ${es.ajustes.checklistConfirmSuffix}`;
-                  if (window.confirm(question)) {
-                    store.loadChecklist();
-                    setMessage(es.ajustes.checklistDone);
-                  }
-                }}
-              >
-                {es.ajustes.checklistButton} · {seedCount()}
-              </Button>
+          <div className="fields">
+            <div className="field">
+              <span className="flab">{es.ajustes.checklistTitle}</span>
+              <span className="fhint">{es.ajustes.checklistHint}</span>
+              <div className="row-actions" style={{ marginTop: 4 }}>
+                <Button
+                  onClick={() => {
+                    const rows = seedCount();
+                    const question = `${es.ajustes.checklistConfirmPrefix} ${rows} ${es.ajustes.checklistConfirmSuffix}`;
+                    if (window.confirm(question)) {
+                      store.loadChecklist();
+                      setMessage(es.ajustes.checklistDone);
+                    }
+                  }}
+                >
+                  {es.ajustes.checklistButton} · {seedCount()}
+                </Button>
+              </div>
+              <span className="fhint">{es.ajustes.checklistNote}</span>
             </div>
-            <span className="fhint">{es.ajustes.checklistNote}</span>
+
+            <div className="field">
+              <span className="flab">{es.ajustes.templateTitle}</span>
+              <span className="fhint">{es.ajustes.templateHint}</span>
+              <div className="row-actions" style={{ marginTop: 4 }}>
+                <Button
+                  onClick={() => {
+                    const rows = templateCount();
+                    const question = `${es.ajustes.templateConfirmPrefix} ${rows} ${es.ajustes.templateConfirmSuffix}`;
+                    if (window.confirm(question)) {
+                      store.loadTemplate(es.template.scenarioName);
+                      setMessage(es.ajustes.templateDone);
+                    }
+                  }}
+                >
+                  {es.ajustes.templateButton} · {templateCount()}
+                </Button>
+              </div>
+              <span className="fhint">{es.ajustes.templateNote}</span>
+            </div>
           </div>
         }
       />

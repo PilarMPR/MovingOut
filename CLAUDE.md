@@ -19,6 +19,8 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 > **Also 2026-08-11: it runs as a desktop app and as an Android APK**, both wrapping the same `dist/` — Electron (`electron/main.cjs`) and Capacitor (`android/`). A `.desktop` entry is installed locally; the APK is debug-signed and built but **not yet installed on a phone**. Still nothing deployed to a public URL. See `CHANGELOG.md`.
 >
 > **2026-08-15: the categories and rooms became the user's, and a new scenario starts blank.** Both lists are editable in Ajustes; the seeded checklist is now a button rather than a default. Storage schema **v3**, read-compatible with v2. See [Taxonomy](#taxonomy--the-categories-and-rooms-are-the-users) below — it holds rules that are easy to undo by accident.
+>
+> **Also 2026-08-15: a second starting point, the `Presupuesto mensual · Madrid` template** (`src/lib/template.ts`). The user's own spreadsheet as a scenario, and the *only* module in the repo that carries amounts — read its header before editing it, because that exception has a reason and three of its modelling choices are load-bearing.
 
 > **Node lives at `/home/p/.local/share/node/bin` and is not on `PATH`.** `export PATH="/home/p/.local/share/node/bin:$PATH"` before any `npm` command, or every script in the next section reports "command not found" and it looks like the toolchain is missing when it is not.
 
@@ -116,6 +118,15 @@ The rules that keep it from quietly losing data:
 - **`es.category` / `es.room` label the shipped set only** (`satisfies Record<DefaultCategoryId, string>`). A user-created label is data and never passes through i18n — that is the line IND008 draws: app copy is translated, user content is not.
 
 **A new scenario is blank** — `newScenario()` returns `entries: []`. The seeded checklist is still in `src/lib/seed.ts` and is now a button in Ajustes (`Cargar checklist`), because it is a prediction from `docs/COST-CHECKLIST.md` and arriving to 77 rows you did not write makes the first task deleting the wrong ones. Loading it restores any category or room it files under that you have since binned.
+
+**There are two starting points, and they are opposites.** `src/lib/template.ts` is the second: the user's `PRESUPUESTO MENSUAL · Madrid` spreadsheet as a whole scenario — 22 rows **with** amounts, a situación of `empleado`, and a colchón target. `Crear escenario de plantilla` creates a new scenario and opens it rather than pouring rows into the open one, because the sheet carries scenario-level fields too. Four things about it are easy to undo by accident, and all four are argued in its module header:
+
+- **It invents two categories** — `esporadicos` and `catastrofe` — and files everything else on the *domain* axis, so alquiler stays under `vivienda`. A group that comes out empty (`fijos` did) means the axis is redundant with one that already exists.
+- **The five contingencies arrive `pausado`.** They size the buffer target; live, they are `unico` rows and `countsUpfront()` accepts them, which would claim you need 8.400 € before you can sleep there.
+- **The buffer target is summed from those five**, never written as a literal.
+- **Every row's amount is also its first `history` revision**, or the first edit is recorded as the original and the drift against the sheet is lost (IND002).
+
+The no-hardcoded-figures rule above is about *published* numbers that go stale and read as authoritative. One person's estimates of their own budget, arriving as a revisable first revision, are not that — but say so in the header if you add another such module, or the next reader will reasonably conclude the rule was ignored.
 
 ### The rest
 

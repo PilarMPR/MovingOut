@@ -8,6 +8,26 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — the spreadsheet, as a scenario you can press a button for
+
+There was a `PRESUPUESTO MENSUAL · Madrid` sheet doing this job already: net income, fixed costs, a prorated column of irregulars, and a catastrophe fund sized by what it is for. It is now a second starting point in Ajustes, beside the checklist and deliberately its opposite — the checklist is structure with no prices, this is a worked budget with them.
+
+### Added
+- **`Crear escenario de plantilla · 22`** in the `Punto de partida` panel. Creates a **new** scenario and opens it; it never touches the one you have open, because the sheet carries a situación, a savings position and a colchón target as well as its rows, and those are scenario-level.
+- **`src/lib/template.ts`** — the sheet as data, with 16 tests asserting its own totals: 1.570 € in, 1.343 € out, **227 €/mes free**, verdict `✓ Te lo puedes permitir`, colchón target 8.400 €.
+- **Two categories the shipped list had no home for** — `Gastos esporádicos` and `Fondo de emergencia` — merged in on load like the checklist's, and ordinary categories once they land.
+- **`store.loadTemplate(name)`**, named through `uniqueName()` like every other add, so pressing it twice gives `Presupuesto mensual · Madrid 2` rather than two identical picker options.
+
+### Notes
+- **The category axis is mixed on purpose.** Every fixed cost has a real domestic home, so alquiler files under `Vivienda`, comida under `Alimentación`, and internet/móvil/suministros under `Suministros` — exactly where they would land if you typed them. Only the two groupings the app had nowhere to put become new categories. `Ocio y salidas` goes to `Ocio` rather than to `Gastos esporádicos`, which is why that bar reads 130 € and not the sheet's 190 €.
+- **The five contingencies arrive `pausado`.** They are the arithmetic behind the 8.400 € target, not costs. Live, they would be `único` rows and land in `upfrontCash` — announcing that moving out costs 8.400 € on day one. Paused, they stay visible as the reasoning and count toward nothing. There is a test whose only job is that number staying zero.
+- **The colchón target is summed from those five, not written as 8.400 €**, so editing one can never leave the target disagreeing with its own arithmetic.
+- **Every row arrives with its figure already in `history`.** Without it the first edit would be recorded as the *original* and the drift against the sheet would be lost exactly when it starts to matter (IND002).
+- **This is the one module in the repo that carries amounts, and it is an exception rather than a precedent.** The no-hardcoded-figures rule is about *published* numbers — rates, caps, official prices — that go stale yearly and read as authoritative. These are the user's own estimates for their own budget, and they arrive as a first revision meant to be revised.
+- The sheet's esporádicos are stored `mensual` because its column is headed *media mensual*: the division already happened, so `toMonthly()` is the identity on every one of them. That is asserted rather than assumed (IND004).
+
+---
+
 ## Unreleased — a scenario can be renamed where its name is read
 
 The name was already editable, in the first field of Ajustes. Nobody found it there, and the reason is structural: the name is *read* in the header picker, several screens away from where it could be *changed*. It is now editable in both places, through one writer that enforces the same rule the `Nuevo escenario` button obeys.

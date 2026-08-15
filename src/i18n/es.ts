@@ -390,6 +390,16 @@ export const es = {
     checklistConfirmSuffix: 'conceptos a este escenario?',
     checklistDone: 'Checklist cargada en este escenario.',
 
+    templateTitle: 'Plantilla de presupuesto mensual',
+    templateHint:
+      'La otra forma de empezar: el presupuesto de la hoja de cálculo, ya con importes. Ingreso neto, gastos fijos, una provisión mensual para los esporádicos y la aportación al fondo de emergencia. Las cinco contingencias que suman el objetivo de colchón entran pausadas — se ven, y no cuentan en ningún total.',
+    templateButton: 'Crear escenario de plantilla',
+    templateConfirmPrefix: '¿Crear un escenario nuevo con',
+    templateConfirmSuffix: 'conceptos y los importes de la hoja?',
+    templateDone: 'Escenario de plantilla creado y abierto.',
+    templateNote:
+      'No toca el escenario que tienes abierto: crea uno aparte, con su situación, su ahorro y su objetivo de colchón, y se cambia a él.',
+
     panelCategories: 'Categorías',
     categoriesHint:
       'Las categorías son tuyas y valen para todos los escenarios: renómbralas, bórralas o crea las que necesites. Cambiar el nombre no recoloca nada, sólo cambia cómo se llama.',
@@ -614,6 +624,76 @@ export const es = {
     planchaTabla: { label: 'Plancha y tabla' },
     alfombras: { label: 'Alfombras y mantas' },
   } as Record<string, { label: string; note?: string }>,
+
+  /**
+   * The worked-budget template (src/lib/template.ts) — the "PRESUPUESTO
+   * MENSUAL · Madrid" spreadsheet. Unlike `seed`, these rows arrive priced,
+   * and the notes are the sheet's own column of notes kept intact.
+   */
+  template: {
+    scenarioName: 'Presupuesto mensual · Madrid',
+    /** Stamped on every first revision, so 22 lines dated today explain themselves. */
+    revisionNote: 'de la hoja de cálculo',
+
+    /** The two groupings the shipped category list has no home for. */
+    category: {
+      esporadicos: 'Gastos esporádicos',
+      catastrofe: 'Fondo de emergencia',
+    },
+
+    rows: {
+      ingresoNeto: {
+        label: 'Ingreso neto mensual',
+        note: 'sueldo neto que recibes cada mes — cámbialo y todo se recalcula',
+      },
+
+      alquiler: { label: 'Alquiler (tu parte)', note: 'piso compartido' },
+      comida: { label: 'Comida', note: 'compra + cocinar en casa' },
+      transporte: { label: 'Transporte', note: 'abono joven, menos de 26' },
+      suministros: {
+        label: 'Suministros · luz, agua y gas',
+        note: 'tu parte, compartido — la luz es estacional, una media plana se queda corta en invierno',
+      },
+      internet: { label: 'Internet', note: 'tu parte, compartido — la promo suele durar 12 meses' },
+      movil: { label: 'Móvil', note: 'tarifa tipo Lowi, Digi o Simyo' },
+      medicina: { label: 'Medicina recetada', note: 'copago fijo mensual' },
+      suscripciones: {
+        label: 'Gimnasio y suscripciones',
+        note: 'Netflix, Spotify, gimnasio — a cero hoy, pero la línea queda puesta',
+      },
+
+      ropa: { label: 'Ropa y calzado', note: 'no todos los meses; esto es la media' },
+      ocio: { label: 'Ocio y salidas', note: 'cine, bares, planes con amigos — media mensual' },
+      regalos: { label: 'Regalos y cumpleaños', note: 'cumples, Navidad — media mensual' },
+      peluqueria: { label: 'Peluquería y cuidado personal', note: 'media mensual, no una cuota' },
+      mantenimiento: {
+        label: 'Mantenimiento del hogar',
+        note: 'bombillas, limpieza, reparaciones pequeñas — media mensual',
+      },
+      viajes: { label: 'Viajes y escapadas', note: 'prorrateado a lo largo del año' },
+      materialTecnico: {
+        label: 'Material técnico',
+        note: 'periféricos, software, cursos — a cero hoy, con la línea puesta',
+      },
+
+      aportacionFondo: {
+        label: 'Aportación al fondo de emergencia',
+        note: 'lo que apartas cada mes hasta llegar al objetivo de colchón. Las cinco líneas pausadas de abajo son de dónde sale ese objetivo: se ven, y no cuentan en ningún total',
+      },
+
+      portatil: { label: 'Portátil roto o sustitución', note: 'herramienta de trabajo, urgente' },
+      electrodomestico: {
+        label: 'Nevera u otro electrodoméstico',
+        note: 'si vives solo o te toca reponerlo',
+      },
+      urgenciaMedica: {
+        label: 'Urgencia médica o dental',
+        note: 'lo que no cubre la Seguridad Social',
+      },
+      perdidaTrabajo: { label: 'Pérdida de trabajo', note: 'unos tres meses de gastos fijos' },
+      reparacionImprevista: { label: 'Reparación imprevista', note: 'piso o coche' },
+    } as Record<string, { label: string; note?: string }>,
+  },
 
   scenario: {
     firstName: 'Mi primer escenario',

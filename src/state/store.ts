@@ -14,6 +14,7 @@ import { pushRevision, today } from '../lib/history';
 import { newId } from '../lib/id';
 import { uniqueName } from '../lib/naming';
 import { seedEntries, seedTaxonomy } from '../lib/seed';
+import { templateCategories, templateScenario } from '../lib/template';
 import {
   PREFIX,
   addTaxon,
@@ -69,6 +70,14 @@ export interface Store {
 
   /** Pours the seeded checklist into the active scenario. Adds; never replaces. */
   loadChecklist: () => void;
+  /**
+   * Creates the worked-budget template as a *new* scenario and opens it. Unlike
+   * the checklist it carries a situación, a savings figure and a colchón target,
+   * and those are scenario-level — pouring them into whatever is open would
+   * overwrite a budget rather than add to one. Takes its name for the same
+   * reason `addScenario` does: the store owns uniqueness, i18n owns the words.
+   */
+  loadTemplate: (name: string) => void;
 
   patchSettings: (patch: Partial<Settings>) => void;
   setCompareIds: (ids: string[]) => void;
@@ -360,6 +369,23 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     });
   }, []);
 
+  const loadTemplate = useCallback((name: string) => {
+    setState((prev) => {
+      // Same restore as the checklist: two of these categories are ones the
+      // template invents, and the rest are shipped ones this install may have
+      // binned. Without the merge a third of the rows land in Otros on the very
+      // next read, and the breakdown it was built for stops existing.
+      const created = templateScenario(uniqueName(prev.scenarios.map((s) => s.name), name));
+      return {
+        ...prev,
+        categories: mergeTaxa(prev.categories, templateCategories()),
+        scenarios: [...prev.scenarios, created],
+        activeScenarioId: created.id,
+        compareIds: [...prev.compareIds, created.id],
+      };
+    });
+  }, []);
+
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setState((prev) => ({ ...prev, settings: { ...prev.settings, ...patch } }));
   }, []);
@@ -399,6 +425,7 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     renameRoom,
     removeRoom,
     loadChecklist,
+    loadTemplate,
     patchSettings,
     setCompareIds,
     replaceAll,
