@@ -12,6 +12,7 @@ import { FALLBACK_CATEGORY, FALLBACK_ROOM } from '../types';
 import { derive, type Derived } from '../lib/derive';
 import { pushRevision, today } from '../lib/history';
 import { newId } from '../lib/id';
+import { uniqueName } from '../lib/naming';
 import { seedEntries, seedTaxonomy } from '../lib/seed';
 import {
   PREFIX,
@@ -107,9 +108,11 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     setState((prev) => ({ ...prev, activeScenarioId: id }));
   }, []);
 
+  // Every "add" below names through uniqueName(). The store is where it belongs:
+  // it is the only thing that knows what is already called what (lib/naming.ts).
   const addScenario = useCallback((name: string) => {
     setState((prev) => {
-      const created = newScenario(name);
+      const created = newScenario(uniqueName(prev.scenarios.map((s) => s.name), name));
       return {
         ...prev,
         scenarios: [...prev.scenarios, created],
@@ -126,7 +129,8 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
       const copy: Scenario = {
         ...source,
         id: newId('s'),
-        name,
+        // Duplicating twice would otherwise give two "Piso (copia)".
+        name: uniqueName(prev.scenarios.map((s) => s.name), name),
         createdAt: today(),
         entries: source.entries.map((e) => ({ ...e, id: newId('e'), history: [...e.history] })),
         projects: source.projects.map((p) => ({ ...p, id: newId('p') })),
@@ -256,7 +260,14 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
   );
 
   const addCategory = useCallback((label: string) => {
-    setState((prev) => ({ ...prev, categories: addTaxon(prev.categories, label, PREFIX.category) }));
+    setState((prev) => ({
+      ...prev,
+      categories: addTaxon(
+        prev.categories,
+        uniqueName(prev.categories.map((t) => t.label), label),
+        PREFIX.category,
+      ),
+    }));
   }, []);
 
   const renameCategory = useCallback((id: string, label: string) => {
@@ -276,7 +287,10 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
   }, []);
 
   const addRoom = useCallback((label: string) => {
-    setState((prev) => ({ ...prev, rooms: addTaxon(prev.rooms, label, PREFIX.room) }));
+    setState((prev) => ({
+      ...prev,
+      rooms: addTaxon(prev.rooms, uniqueName(prev.rooms.map((t) => t.label), label), PREFIX.room),
+    }));
   }, []);
 
   const renameRoom = useCallback((id: string, label: string) => {

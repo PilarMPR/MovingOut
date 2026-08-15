@@ -21,6 +21,18 @@ IND003 is worth reading as the model case: it stayed silent through the entire b
 
 ## Entries
 
+## 2026-08-15 · "El botón de nuevo escenario no funciona" — it worked, and had for months · no ID
+
+**What happened.** Reported straight after the blank-scenario change: the button does nothing. It did something. It had always created the scenario, activated it and added it to `compareIds`. What it never did was create one you could *tell apart* — `App.tsx` called `store.addScenario(es.scenario.firstName)`, so every scenario was named "Mi primer escenario", and the header picker lists names. Three presses, three identical options, three identical screens.
+
+**The bug is older than the change that revealed it, and that is the point.** Before, a new scenario arrived holding 77 seeded rows, so the grid visibly repopulated and the button read as working. That feedback was **incidental** — a side effect of seeding, not anything the button did — and making scenarios blank removed it, leaving the real defect with nothing left to hide behind. **A feature can be carried for months by a side effect of an unrelated one; removing the unrelated one is what files the bug report.** Which is also why the report pointed at the wrong feature: nothing in the new-scenario path had been touched.
+
+**Verified before fixing, then verified again after.** The same `app://movingout` driver from earlier in the day: click the real button, read `localStorage`. Before — `count` 1 → 2 → 3, `names` all `"Mi primer escenario"`, picker unchanged. After — `Escenario nuevo`, `Escenario nuevo 2`, picker following each time. Worth doing in that order: "it does nothing" and "it does something invisible" are the same complaint and want opposite fixes, and guessing between them from the report alone is how you end up debugging `setState`.
+
+**Three more instances of the identical shape, found by looking rather than by being told.** Duplicating twice gave two `Piso (copia)`; adding categories or rooms gave a stack of `Categoría nueva`. All four are "add something from a fixed default label into a list the user reads by label", so all four now go through `uniqueName()` in `src/lib/naming.ts`. It lives in the store rather than in the callers because the store is the only thing that knows what is already called what — and putting it in the four call sites would have made a fifth one wrong later.
+
+**Lesson.** *Blank state is not the absence of design.* Emptying a screen removes whatever was accidentally serving as confirmation, and every affordance that was relying on content to prove it fired has to get that proof back explicitly. Worth re-checking the rest of the app against this: the buttons whose only feedback is that something appears.
+
 ## 2026-08-15 · Categories became data, and IND003 fired for the first time · IND003
 
 **What happened.** The ten categories and five rooms were closed unions in `types.ts`. They are now `Taxon[]` lists in `SavedState`, editable from Ajustes, and a new scenario arrives with no entries at all instead of the 77-row checklist.

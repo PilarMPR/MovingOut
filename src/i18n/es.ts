@@ -614,6 +614,9 @@ export const es = {
 
   scenario: {
     firstName: 'Mi primer escenario',
+    /** Distinct from `firstName` on purpose: the header picker lists names, and
+     *  two identical entries read as a button that did nothing. */
+    newName: 'Escenario nuevo',
     copySuffix: '(copia)',
   },
 } as const;

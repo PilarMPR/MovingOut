@@ -146,7 +146,7 @@ export function App() {
               shortfallCents={derived.shortfallCents}
               big
             />
-            <Button variant="onInk" onClick={() => store.addScenario(es.scenario.firstName)}>
+            <Button variant="onInk" onClick={() => store.addScenario(es.scenario.newName)}>
               {es.app.newScenario}
             </Button>
           </div>

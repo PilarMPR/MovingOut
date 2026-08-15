@@ -26,6 +26,10 @@ The app shipped with ten categories and five rooms baked into `src/types.ts` as 
 - **`es.category` / `es.room` label the *shipped* set only.** Anything the user adds carries its own label and never passes through i18n — which is the line IND008 actually draws: app copy is translated, user content is not.
 - **`furnitureByRoom()` takes the room list as an argument** rather than reading a constant, and files an article whose room has been binned into the fallback group instead of dropping it.
 
+### Fixed
+- **`Nuevo escenario` looked like a dead button.** It always created the scenario named `es.scenario.firstName`, so pressing it three times gave three entries all called "Mi primer escenario" in a picker that lists names — over three identical screens. The click worked the whole time; nothing on screen said so. Blank scenarios are what made it total: the 77 seeded rows appearing had been the only feedback the button ever had. New scenarios are now `Escenario nuevo`, then `Escenario nuevo 2`, and the picker changes on every press.
+- **Same bug, three more places.** Duplicating twice gave two `Piso (copia)`; adding categories or rooms gave a stack of `Categoría nueva`. All four now name through `uniqueName()` in the new `src/lib/naming.ts` (6 tests), applied in the store — the only place that knows what is already called what.
+
 ### Notes
 - **Deleting a category re-files its rows onto `Otros` rather than deleting them**, and the confirm says how many will move. `Otros` therefore cannot itself be deleted — its bin is visibly disabled rather than merely inert — because it is what makes every other delete non-destructive.
 - **Renaming touches the label and nothing else.** Ids are generated (`c_`/`r_` prefixed) and permanent, so "Ocio" → "Caprichos" re-titles the group without re-filing a single row, and the renamed category still lines up with itself across scenarios.
