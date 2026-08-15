@@ -1,4 +1,12 @@
-# MovingOut
+# MovingOut — archived
+
+> **This branch is the archive of the first attempt, kept whole and no longer worked on.**
+> `main` was reset to a blank slate on 2026-08-16 to be replanned from scratch. Everything
+> below describes the archived app, which built and ran; the last commit on this branch is
+> the Compras shopping log, which was still uncommitted work in progress when the archive
+> was taken. Nothing here is deleted, so any part of it can be read, copied or revived —
+> `docs/DEVLOG.md` in particular records what went wrong and why, which is the part worth
+> carrying forward.
 
 A personal budget calculator for moving out — what independence actually costs, and whether it's affordable yet.
 
