@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { formatEUR, parseAmount, toEditableString } from '../lib/money';
 import type { Cents } from '../types';
 
@@ -31,6 +31,71 @@ export function EditableText({ value, onChange, ariaLabel, placeholder, align = 
   );
 }
 
+interface NameProps {
+  value: string;
+  /**
+   * Commits on blur or Enter, never on keystroke. The store may hand back a
+   * *different* name than the one typed — it dedupes, and it refuses a blank —
+   * so the input drops its draft on commit and re-reads `value`. Typing over
+   * the name of another scenario therefore snaps to "Piso 2" when you leave the
+   * field, rather than sitting there as a lie until the next reload.
+   */
+  onCommit: (value: string) => void;
+  ariaLabel: string;
+  /** `fin` on paper, `in-dark` in the ink header. */
+  className?: string;
+  autoFocus?: boolean;
+  /** Fired after commit or cancel, for callers that show the input on demand. */
+  onDone?: () => void;
+}
+
+/**
+ * A name you have to be able to tell apart in a list: the scenario name, today.
+ * Distinct from `EditableText`, which writes on every keystroke because nothing
+ * downstream of a concepto's label cares what half of it looks like.
+ */
+export function EditableName({
+  value,
+  onCommit,
+  ariaLabel,
+  className = 'fin',
+  autoFocus,
+  onDone,
+}: NameProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  // Escape blurs, and blur commits — so the cancel has to survive the trip.
+  // Clearing the draft in the key handler is not enough: `blur()` fires its
+  // handler synchronously, before React has re-rendered the input.
+  const cancelled = useRef(false);
+
+  return (
+    <input
+      className={className}
+      value={draft ?? value}
+      aria-label={ariaLabel}
+      autoFocus={autoFocus}
+      onFocus={(event) => {
+        setDraft(value);
+        event.currentTarget.select();
+      }}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={(event) => {
+        setDraft(null);
+        if (cancelled.current) cancelled.current = false;
+        else onCommit(event.target.value);
+        onDone?.();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+        if (event.key === 'Escape') {
+          cancelled.current = true;
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
 interface AmountProps {
   cents: Cents;
   hasAmount: boolean;
@@ -50,6 +115,9 @@ interface AmountProps {
  */
 export function EditableAmount({ cents, hasAmount, onCommit, ariaLabel, emptyLabel }: AmountProps) {
   const [draft, setDraft] = useState<string | null>(null);
+  // See EditableName: Escape has to hand the cancel to the blur handler, since
+  // clearing the draft here does not reach the DOM before blur reads it.
+  const cancelled = useRef(false);
 
   const commit = (raw: string) => {
     setDraft(null);
@@ -74,11 +142,18 @@ export function EditableAmount({ cents, hasAmount, onCommit, ariaLabel, emptyLab
       inputMode="decimal"
       onFocus={() => setDraft(hasAmount ? toEditableString(cents) : '')}
       onChange={(event) => setDraft(event.target.value)}
-      onBlur={(event) => commit(event.target.value)}
+      onBlur={(event) => {
+        if (cancelled.current) {
+          cancelled.current = false;
+          setDraft(null);
+          return;
+        }
+        commit(event.target.value);
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur();
         if (event.key === 'Escape') {
-          setDraft(null);
+          cancelled.current = true;
           event.currentTarget.blur();
         }
       }}

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { AddRow } from '../components/AddRow';
 import { Button } from '../components/Button';
+import { EditableName } from '../components/EditableCell';
 import { Panel } from '../components/Panel';
 import { es, plural } from '../i18n/es';
 import { formatDate } from '../lib/history';
@@ -163,11 +164,12 @@ export function Ajustes({ store }: { store: Store }) {
           <div className="fields">
             <label className="field">
               <span className="flab">{es.ajustes.scenarioName}</span>
-              <input
-                className="fin"
+              <EditableName
                 value={scenario.name}
-                onChange={(event) => store.patchScenario({ name: event.target.value })}
+                ariaLabel={es.ajustes.scenarioName}
+                onCommit={(name) => store.renameScenario(scenario.id, name)}
               />
+              <span className="fhint">{es.ajustes.scenarioNameHint}</span>
             </label>
 
             <label className="field">

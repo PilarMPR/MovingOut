@@ -29,6 +29,7 @@ export const es = {
     name: 'MOVINGOUT',
     place: 'Madrid · EUR',
     scenarioLabel: 'Escenario',
+    renameScenario: 'Renombrar escenario',
     situacionLabel: 'Situación',
     compare: 'Comparar',
     export: 'Exportar',
@@ -349,6 +350,8 @@ export const es = {
     panelApp: 'Aplicación',
     panelData: 'Datos',
     scenarioName: 'Nombre del escenario',
+    scenarioNameHint:
+      'Se guarda al salir del campo. Si ya hay otro escenario con ese nombre se le añade un número, para que los distingas en el selector.',
     situacion: 'Situación',
     savings: 'Ahorro disponible',
     savingsHint: 'Lo que tienes hoy, antes de entrar. De aquí sale el margen y el colchón.',

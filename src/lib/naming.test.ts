@@ -32,4 +32,12 @@ describe('uniqueName', () => {
   it('handles the duplicate-a-copy case', () => {
     expect(uniqueName(['Piso', 'Piso (copia)'], 'Piso (copia)')).toBe('Piso (copia) 2');
   });
+
+  // A rename passes the *other* names, never its own — otherwise re-committing
+  // a field you did not change would walk the scenario to "Piso 2", "Piso 3".
+  it('leaves a rename that changes nothing alone, given the other names', () => {
+    const others = ['Compartir con Ana'];
+    expect(uniqueName(others, 'Piso')).toBe('Piso');
+    expect(uniqueName(others, 'Compartir con Ana')).toBe('Compartir con Ana 2');
+  });
 });

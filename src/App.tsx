@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Button } from './components/Button';
+import { EditableName } from './components/EditableCell';
 import { VerdictTag } from './components/VerdictTag';
 import { es } from './i18n/es';
 import { useStore } from './state/store';
@@ -37,6 +38,22 @@ type Tab = (typeof TABS)[number] | 'sistema';
  *  reflowed table. src/lib does not know which one is mounted. */
 const MOBILE_QUERY = '(max-width: 820px)';
 
+/** Rename. Paired with the picker, so the name is edited where it is read. */
+function PencilIcon() {
+  return (
+    <svg viewBox="0 0 14 14" width="11" height="11" aria-hidden="true" focusable="false">
+      <path
+        d="M2.6 11.4l.6-2.4 5.7-5.7 1.8 1.8-5.7 5.7-2.4.6zM8.9 3.3l1.2-1.2 1.8 1.8-1.2 1.2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window === 'undefined' ? false : window.matchMedia(MOBILE_QUERY).matches,
@@ -55,6 +72,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('resumen');
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [onlyEssential, setOnlyEssential] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const isMobile = useIsMobile();
 
   const { scenario, state, derived } = store;
@@ -102,20 +120,44 @@ export function App() {
             <em>{es.app.place}</em>
           </div>
 
+          {/* The picker turns into its own name field: the list is where you
+              read the name, so it is where you should be able to fix it. */}
           <div className="hdr-grp">
             <span>{es.app.scenarioLabel}</span>
-            <select
-              className="sel-dark"
-              aria-label={es.app.scenarioLabel}
-              value={scenario.id}
-              onChange={(event) => store.selectScenario(event.target.value)}
-            >
-              {state.scenarios.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
+            {renaming ? (
+              <EditableName
+                className="in-dark"
+                value={scenario.name}
+                ariaLabel={es.app.renameScenario}
+                autoFocus
+                onCommit={(name) => store.renameScenario(scenario.id, name)}
+                onDone={() => setRenaming(false)}
+              />
+            ) : (
+              <>
+                <select
+                  className="sel-dark"
+                  aria-label={es.app.scenarioLabel}
+                  value={scenario.id}
+                  onChange={(event) => store.selectScenario(event.target.value)}
+                >
+                  {state.scenarios.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="hdr-ico"
+                  aria-label={es.app.renameScenario}
+                  title={es.app.renameScenario}
+                  onClick={() => setRenaming(true)}
+                >
+                  <PencilIcon />
+                </button>
+              </>
+            )}
           </div>
 
           <div className="hdr-grp">

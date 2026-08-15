@@ -30,9 +30,18 @@ export interface Store {
   scenario: Scenario;
   derived: Derived;
 
-  patchScenario: (patch: Partial<Scenario>) => void;
+  /** Everything about a scenario except its name — see `renameScenario`. */
+  patchScenario: (patch: Omit<Partial<Scenario>, 'name'>) => void;
   selectScenario: (id: string) => void;
   addScenario: (name: string) => void;
+  /**
+   * Renaming has its own writer so it lands on the same rule the "Nuevo
+   * escenario" button does: a name you can tell apart in the header picker
+   * (lib/naming.ts). A free-for-all patch would let you type an existing name
+   * back in and rebuild by hand the exact list of identical options that rule
+   * exists to prevent — which is why `patchScenario` cannot reach `name`.
+   */
+  renameScenario: (id: string, name: string) => void;
   duplicateScenario: (name: string) => void;
   removeScenario: (id: string) => void;
 
@@ -100,9 +109,36 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
   }, []);
 
   const patchScenario = useCallback(
-    (patch: Partial<Scenario>) => mapActive((s) => ({ ...s, ...patch })),
+    (patch: Omit<Partial<Scenario>, 'name'>) => mapActive((s) => ({ ...s, ...patch })),
     [mapActive],
   );
+
+  // By id rather than "the active one": the header renames what is selected,
+  // but nothing about this needs it to be.
+  const renameScenario = useCallback((id: string, name: string) => {
+    setState((prev) => {
+      const current = prev.scenarios.find((s) => s.id === id);
+      if (current === undefined) return prev;
+
+      // A blank is not a name. The picker lists names, so an empty one is a
+      // scenario you can no longer point at — the field reverts instead.
+      const wanted = name.trim();
+      if (wanted === '') return prev;
+
+      const unique = uniqueName(
+        prev.scenarios.filter((s) => s.id !== id).map((s) => s.name),
+        wanted,
+      );
+      // Leaving the field without having changed anything is not an edit, and
+      // should not rewrite localStorage.
+      if (unique === current.name) return prev;
+
+      return {
+        ...prev,
+        scenarios: prev.scenarios.map((s) => (s.id === id ? { ...s, name: unique } : s)),
+      };
+    });
+  }, []);
 
   const selectScenario = useCallback((id: string) => {
     setState((prev) => ({ ...prev, activeScenarioId: id }));
@@ -346,6 +382,7 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     patchScenario,
     selectScenario,
     addScenario,
+    renameScenario,
     duplicateScenario,
     removeScenario,
     addEntry,

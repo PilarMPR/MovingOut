@@ -8,6 +8,24 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — a scenario can be renamed where its name is read
+
+The name was already editable, in the first field of Ajustes. Nobody found it there, and the reason is structural: the name is *read* in the header picker, several screens away from where it could be *changed*. It is now editable in both places, through one writer that enforces the same rule the `Nuevo escenario` button obeys.
+
+### Added
+- **Rename in the header.** A pencil beside the scenario picker swaps the `<select>` for a text field at identical metrics, so the bar does not reflow when you click it. Enter or clicking away commits; Escape cancels.
+- **`store.renameScenario(id, name)`** — the one way a scenario name changes. It trims, refuses a blank, and dedupes against the *other* scenarios through `uniqueName()`. Renaming to a name that is taken lands on `Piso 2` rather than on a second `Piso`.
+- **`EditableName`** in `components/EditableCell.tsx` — a text input that commits on blur or Enter and then re-reads its prop, so a name the store adjusted snaps to what was actually stored instead of sitting on screen as a lie until the next reload. `className` picks the ground: `fin` on paper, the new `in-dark` on ink.
+
+### Changed
+- **`patchScenario` can no longer reach `name`** — its parameter is `Omit<Partial<Scenario>, 'name'>`. The uniqueness rule was one keystroke-level `patchScenario({ name })` away from being bypassable, which is how you rebuild by hand the exact list of identical picker options that `src/lib/naming.ts` exists to prevent. Making the wrong door not open beats remembering not to use it.
+- The Ajustes field commits on blur rather than on every keystroke, and carries a hint saying so — the rename can change what you typed, and a field that rewrites itself mid-word is worse than one that settles when you leave it.
+
+### Fixed
+- **Escape did not cancel an amount edit.** `EditableAmount` cleared its draft and then called `blur()`, but `blur()` runs its handler synchronously, before React re-renders — so the blur handler read the *typed* value straight out of the DOM and committed it. Escape behaved exactly like Enter, and on an amount that means a spurious revision in the price history (IND002). Both inputs now hand the cancel to the blur handler through a ref.
+
+---
+
 ## Unreleased — the categories are yours, and a new scenario starts blank
 
 The app shipped with ten categories and five rooms baked into `src/types.ts` as closed unions, and poured a 77-row checklist into every new scenario. Both were predictions made before anyone had used it. They are now a starting point you can edit instead of a schema you cannot.

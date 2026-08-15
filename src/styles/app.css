@@ -54,6 +54,19 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   border-radius:var(--r-sm);max-width:15rem;}
 .sel-dark:hover{border-color:var(--on-ink-faint);}
 
+/* The rename field takes the picker's place, so it takes its metrics too —
+   the header must not reflow when you click the pencil. */
+.in-dark{background:var(--on-ink-fill);border:1px solid var(--on-ink-line);color:var(--on-ink);
+  font-family:var(--mono);font-weight:600;font-size:10px;padding:5px 9px;
+  border-radius:var(--r-sm);max-width:15rem;min-width:0;width:15rem;}
+/* --accent-l is the accent as it survives the ink ground; the brighter fill is
+   what a 3px ring does on paper, which would only smear here. */
+.in-dark:focus{outline:none;border-color:var(--accent-l);background:var(--on-ink-line);}
+.hdr-ico{flex:none;width:24px;height:24px;display:grid;place-items:center;cursor:pointer;
+  background:var(--on-ink-fill);border:1px solid var(--on-ink-line);border-radius:var(--r-sm);
+  color:var(--on-ink-soft);}
+.hdr-ico:hover{color:var(--on-ink);border-color:var(--on-ink-faint);}
+
 /* Tabs sit in the ink bar and rise into the page: the active one is a notch
    cut out of the header, filled with the page ground. */
 .tabs{max-width:1500px;margin:0 auto;padding:0 18px;display:flex;gap:2px;align-items:flex-end;
