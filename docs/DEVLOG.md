@@ -18,6 +18,24 @@ Notably **not** yet earned after the first build: IND002, IND003, IND005, IND006
 
 ## Entries
 
+## 2026-08-15 · "The desktop app won't open" — it was opening the whole time · no ID
+
+**What happened.** Reported as: works on the phone, will not open on the laptop. The suggested fix was a laptop-specific branch. There was no bug in the app, and the branch would have forked a working codebase away from the one thing that was actually fine.
+
+**What it actually was, in two parts.** The `.AppImage` in `release/` genuinely cannot run here — no `libfuse.so.2`, no sudo — and it is by a distance the most double-clickable file in that directory. It had been left there on the reasoning that it stays useful on machines that *do* have FUSE. That reasoning is true and it was still the wrong call: **a known-broken artifact sitting next to working ones is not neutral, it is the default thing someone will try.** It is now removed from `build.linux.target`; `tar.gz` is the only artifact. Second, the window opens on **whichever workspace the launcher happened to be on** — during diagnosis it sat on workspace 3 while the current desktop was 4. A window you cannot see is indistinguishable from a window that was never created.
+
+**How it was actually settled, and why the earlier checks were not enough.** Three levels of evidence, each of which looked sufficient and wasn't:
+
+1. *The process stays alive* (`timeout 12 ...; exit=124`) — passes for a process that never opens a window.
+2. *A window exists* (`wmctrl -lG` → `2560x1464` at `+60+256`, on-screen, `_NET_WM_WINDOW_TYPE_NORMAL`) — passes for a blank white window.
+3. *The DOM has content* — the only one that answers the question.
+
+Level 3 needed no code change: launch the **packaged** binary with `--remote-debugging-port=9222`, then drive the DevTools protocol over a WebSocket (`suppress_origin=True`, or the handshake is refused with a 403 naming `--remote-allow-origins`). That returned 249 nodes, 405 CSS rules, `getComputedStyle(body).backgroundColor === rgb(239,237,231)` — the real `--bg` — and `localStorage` working at `origin=app://movingout`. **This is the check that should have been run on the packaged build on day one**; the `capturePage` hook from 2026-08-11 only ever proved the *dev* build renders, and dev is the configuration where the asar does not exist.
+
+**The theory that was wrong, and worth recording because it was plausible.** The suspicion was that `net.fetch(pathToFileURL(...))` cannot read through `app.asar` — Chromium's `file://` loader has no idea what an asar is — so the packaged app would serve nothing and show a blank window, exactly matching the symptom, and *only* when packaged. It is a real failure mode for this design. It is simply not what happens: Electron's `net.fetch` resolves inside the archive, and the origin fix holds in the packaged build. Recorded so nobody re-derives the fear and "fixes" it by disabling asar.
+
+**Lesson.** *Works on A, not on B* invites a fork, and a fork is almost always the wrong first move — it doubles the surface while leaving the cause untouched. The useful question is what genuinely differs between A and B, and here nothing in `dist/` did: the difference was the host, the artifact chosen, and which workspace a window landed on.
+
 ## 2026-08-11 · Wrapped as a desktop app and an APK; the origin is the whole story · no ID
 
 **What happened.** The same `dist/` got two native shells: Electron for the desktop and Capacitor for Android. No `src/` file changed. The interesting parts were all outside the app.

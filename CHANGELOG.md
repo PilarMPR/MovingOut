@@ -2,7 +2,7 @@
 
 One section per deploy. No version numbers — this is a personal app with a single user, and a semver number would be ceremony without a consumer.
 
-> **`package.json` does carry a version, and that is not a reversal of the line above.** Once the app is packaged, the build tools stamp artifacts with it: the filename `MovingOut-1.0.0.AppImage`, Android's `versionName`. Left at `0.0.0` those read as broken rather than unversioned. So the *artifacts* are versioned because something downstream demands it, and the *sections here* still are not, because nothing does. Bump `package.json` and `android/app/build.gradle` together when an artifact goes somewhere.
+> **`package.json` does carry a version, and that is not a reversal of the line above.** Once the app is packaged, the build tools stamp artifacts with it: the filename `movingout-1.0.0.tar.gz`, Android's `versionName`. Left at `0.0.0` those read as broken rather than unversioned. So the *artifacts* are versioned because something downstream demands it, and the *sections here* still are not, because nothing does. Bump `package.json` and `android/app/build.gradle` together when an artifact goes somewhere.
 
 This tracks **code**. The app's own Historial tab tracks **prices**, which is a different changelog entirely — worth saying which one you mean.
 
@@ -26,7 +26,7 @@ Neither is a port. Both shells wrap exactly the build the web target already pro
 - **The PWA manifest carried the old palette too** — `background_color` `#EBE4D9` and `theme_color` `#1E1813`, both from before the re-skin. Now `#EFEDE7` / `#17191C`. On Android these are what the splash and status bar are painted with, so the packaging is what made it visible. Same fix to the `theme-color` meta in `index.html`.
 
 ### Notes
-- **Two desktop artifacts, because the AppImage will not run on this machine.** It needs `libfuse.so.2`; Ubuntu ships FUSE 3 and the compat package needs sudo, which there isn't. So `tar.gz` is built alongside it — unpack anywhere and run `movingout`, no FUSE involved — and that is the artifact to copy to another machine. The AppImage stays for machines that do have FUSE. Locally the app runs from `release/linux-unpacked/movingout` via a validated `.desktop` entry in `~/.local/share/applications/`.
+- **One desktop artifact, `tar.gz`, and deliberately no AppImage.** The AppImage needs `libfuse.so.2`; Ubuntu ships FUSE 3 and the compat package needs sudo, which there isn't. It was built anyway for a while, on the reasoning that it stays useful on machines that *do* have FUSE — which turned out to be a bad trade: it was also the most double-clickable file in `release/`, so the one artifact that could never work was the one most likely to be tried. `tar.gz` unpacks anywhere and runs with no FUSE. Locally the app runs from `release/linux-unpacked/movingout` via a validated `.desktop` entry in `~/.local/share/applications/`.
 - **Every desktop launch path passes `--ozone-platform=x11`.** Chromium's Wayland backend segfaults on this compositor before it paints. It cannot be set from `main.cjs` — see `docs/DEVLOG.md`. The renderer sandbox stays on; only the display backend changes.
 - The APK is **debug-signed**, with the `~/.android/debug.keystore` that was already on this machine. That is enough to install by hand and not enough to publish.
 - `release/` is now gitignored. `android/` is committed, as Capacitor intends; its own `.gitignore` covers `local.properties` and build output.

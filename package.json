@@ -59,7 +59,6 @@
     ],
     "linux": {
       "target": [
-        "AppImage",
         "tar.gz"
       ],
       "category": "Office",

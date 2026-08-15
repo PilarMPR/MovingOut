@@ -29,12 +29,14 @@ npm run build        # production build
 npm run test         # Vitest, src/lib only
 
 npm run desktop      # build + launch the Electron shell
-npm run desktop:dist # package release/ — .AppImage, .tar.gz and linux-unpacked/
+npm run desktop:dist # package release/ — .tar.gz and linux-unpacked/
 npm run android      # build + cap sync android
 npm run android:apk  # debug APK via Gradle
 ```
 
-**Take the `.tar.gz`, not the `.AppImage`.** The AppImage needs `libfuse.so.2`, which this machine does not have and cannot install without sudo. The tar.gz unpacks and runs anywhere. Artifact versions come from `package.json` — bump it and `android/app/build.gradle` together.
+**There is deliberately no AppImage.** It was built for a while and it never ran here: it needs `libfuse.so.2`, this machine has FUSE 3, and the compat package needs sudo. Leaving it in `release/` meant the most double-clickable file was the one that could not work, which cost an afternoon of "the desktop app won't open" when the desktop app was fine. `tar.gz` unpacks and runs anywhere with no FUSE. Artifact versions come from `package.json` — bump it and `android/app/build.gradle` together.
+
+**The app runs locally from `release/linux-unpacked/movingout`**, via a `.desktop` entry in `~/.local/share/applications/`. Note that it may open on a **different workspace** than the one you are on — which also reads as "it didn't open". `wmctrl -lG | grep MovingOut` settles it in one line.
 
 **The native builds need two toolchains that are not on `PATH`** — same situation as Node, below:
 
