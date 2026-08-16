@@ -7,6 +7,7 @@ import { useStore } from './state/store';
 import { Ajustes } from './tabs/Ajustes';
 import { Comparar } from './tabs/Comparar';
 import { Compras } from './tabs/Compras';
+import { ComprasMobile } from './tabs/ComprasMobile';
 import { Costes, NO_FILTERS, type Filters } from './tabs/Costes';
 import { CostesMobile } from './tabs/CostesMobile';
 import { Historial } from './tabs/Historial';
@@ -96,7 +97,7 @@ export function App() {
           <Costes store={store} filters={filters} onFilters={setFilters} />
         );
       case 'compras':
-        return <Compras store={store} />;
+        return isMobile ? <ComprasMobile store={store} /> : <Compras store={store} />;
       case 'muebles':
         return (
           <Muebles store={store} onlyEssential={onlyEssential} onOnlyEssential={setOnlyEssential} />
@@ -116,8 +117,9 @@ export function App() {
     }
   };
 
-  // Costes on mobile renders edge to edge: the card list is the page.
-  const bare = isMobile && active === 'costes';
+  // The two forked screens render edge to edge on mobile: the card list is the
+  // page, and a padded body would inset cards that are meant to span it.
+  const bare = isMobile && (active === 'costes' || active === 'compras');
 
   return (
     <div className="shell">

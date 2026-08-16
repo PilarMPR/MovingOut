@@ -258,6 +258,9 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
             frequency: 'mensual',
             priority: 'deseable',
             status: 'activo',
+            // A new row is a cost you expect to pay. The cushion's add-row
+            // passes `kind: 'critico'` instead, which is what puts it there.
+            kind: 'fijo',
             amountCents: 0,
             hasAmount: false,
             history: [],

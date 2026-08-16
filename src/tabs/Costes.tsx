@@ -3,6 +3,7 @@ import { AddRow } from '../components/AddRow';
 import { EditableAmount, EditableText } from '../components/EditableCell';
 import { Chip, FilterBar, FilterLabel } from '../components/FilterBar';
 import { Panel } from '../components/Panel';
+import { Colchon } from './Colchon';
 import { DirectionSelect, Select, StatusSelect } from '../components/Select';
 import { es, plural } from '../i18n/es';
 import { toMonthly } from '../lib/frequency';
@@ -10,7 +11,15 @@ import { delta, formatDate } from '../lib/history';
 import { formatEUR, formatSignedEUR, formatSignedPercent } from '../lib/money';
 import { idsOf, labelsOf } from '../lib/taxonomy';
 import type { Store } from '../state/store';
-import { DIRECTIONS, FREQUENCIES, PRIORITIES, STATUSES, type Category, type Entry } from '../types';
+import {
+  DIRECTIONS,
+  ENTRY_KINDS,
+  FREQUENCIES,
+  PRIORITIES,
+  STATUSES,
+  type Category,
+  type Entry,
+} from '../types';
 
 export type DirectionFilter = 'all' | 'entrada' | 'salida';
 export type PriorityFilter = 'all' | 'esencial' | 'deseable';
@@ -146,6 +155,19 @@ function Row({ entry, store, categoryIds, categoryLabels, open, onToggle }: RowP
           />
         </td>
         <td>
+          {/* Retagging a row `crítico` here makes it leave the grid and appear
+              in the colchón below — the honest consequence of saying it has not
+              happened, and reversible from the same control down there. */}
+          <Select
+            value={entry.kind}
+            options={ENTRY_KINDS}
+            labels={es.kind}
+            ariaLabel={es.costes.colKind}
+            variant={entry.kind === 'esporadico' ? 'plain' : 'strong'}
+            onChange={(kind) => store.patchEntry(entry.id, { kind })}
+          />
+        </td>
+        <td>
           <Select
             value={entry.category}
             options={categoryIds}
@@ -231,7 +253,7 @@ function Row({ entry, store, categoryIds, categoryLabels, open, onToggle }: RowP
 
       {open && (
         <tr className="drawer">
-          <td colSpan={9}>
+          <td colSpan={10}>
             <div className="drawer-in">
               <div className="dh">
                 {es.costes.historyTitle} · {revisions} {es.costes.historyRevisions}
@@ -295,8 +317,11 @@ export function Costes({ store, filters, onFilters }: Props) {
   const balanceTone =
     verdict === 'falta' ? 'neg' : verdict === 'justo' ? 'warn' : verdict === 'ok' ? 'pos' : 'quiet';
 
+  // Two sections of one screen: what will cost money, then what might. The
+  // stack is what stops them reading as one list — see tabs/Colchon.tsx.
   return (
-    <Panel
+    <div className="stack">
+      <Panel
       label={`${es.costes.panel} · ${costes.length}`}
       tone={missing > 0 ? 'amber' : 'green'}
       actions={
@@ -376,6 +401,7 @@ export function Costes({ store, filters, onFilters }: Props) {
             <tr>
               <th>{es.costes.colConcept}</th>
               <th>{es.costes.colType}</th>
+              <th>{es.costes.colKind}</th>
               <th>{es.costes.colCategory}</th>
               <th>{es.costes.colFrequency}</th>
               <th>{es.costes.colPriority}</th>
@@ -400,7 +426,7 @@ export function Costes({ store, filters, onFilters }: Props) {
 
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9}>
+                <td colSpan={10}>
                   {/* An empty scenario and an over-filtered one look identical
                       and mean opposite things, so they say different words. */}
                   <div className="empty-note">
@@ -413,7 +439,7 @@ export function Costes({ store, filters, onFilters }: Props) {
             {/* The three figures the grid exists to produce, at the foot of the
                 grid that produced them — normalised to the month, always. */}
             <tr className="tot">
-              <td colSpan={9}>
+              <td colSpan={10}>
                 <div className="totstrip">
                   <span>
                     {es.costes.totalRow} ·{' '}
@@ -444,6 +470,9 @@ export function Costes({ store, filters, onFilters }: Props) {
       </div>
 
       <AddRow label={es.costes.add} onClick={() => store.addEntry({ label: es.costes.newLabel })} />
-    </Panel>
+      </Panel>
+
+      <Colchon store={store} />
+    </div>
   );
 }

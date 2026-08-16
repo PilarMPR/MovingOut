@@ -204,21 +204,18 @@ export function Ajustes({ store }: { store: Store }) {
               <span className="fhint">{es.ajustes.savingsHint}</span>
             </label>
 
-            <label className="field">
-              <span className="flab">{es.ajustes.bufferTarget}</span>
-              <input
-                className="fin"
-                defaultValue={toEditableString(scenario.buffer.targetCents)}
-                inputMode="decimal"
-                onBlur={(event) => {
-                  const parsed = parseAmount(event.target.value);
-                  if (parsed !== null) {
-                    store.patchScenario({ buffer: { targetCents: Math.abs(parsed) } });
-                  }
-                }}
-              />
-              <span className="fhint">{es.ajustes.bufferHint}</span>
-            </label>
+            {/* The target used to be typed here. It is now the sum of the
+                colchón list at the foot of Costes, so the field is gone and
+                this says where it went — a field that silently disappears
+                reads as a feature that was removed. */}
+            <div className="field">
+              <span className="flab">{es.ajustes.bufferMoved}</span>
+              <div className="fin fin-derived">
+                {formatEUR(derived.cushion.targetCents)}
+                <span>{es.colchon.targetNote}</span>
+              </div>
+              <span className="fhint">{es.ajustes.bufferMovedHint}</span>
+            </div>
           </div>
         }
       />

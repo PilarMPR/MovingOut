@@ -8,6 +8,36 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — fijo, esporádico, crítico: money now has a certainty axis
+
+The app could tell income from cost, and cost from furniture, but not a bill you owe from a provision you chose — so "te faltan 120 €" meant the same thing whether the rent was short or the clothes budget was. And it had no way at all to write down a cost that **has not happened**: the template's five contingencies were smuggled in as `pausado` rows, because paused was the only status that kept a row visible and out of the totals.
+
+`Entry.kind` is the axis. `fijo` is committed, `esporadico` is real but yours to choose, and `critico` is a possibility rather than an expense.
+
+### Added
+- **`Entry.kind`**, a `Clase` column in the Costes grid and a select in the mobile card. Retagging a row `crítico` moves it out of the grid and into the colchón, which is the honest consequence of saying it has not happened.
+- **The colchón section**, at the foot of Costes (`src/tabs/Colchon.tsx`). Its columns are in the conditional — `PODRÍA PASAR` and `COSTARÍA` — against the grid's `CONCEPTO` and `IMPORTE`, because those are two different acts of writing.
+- **`cushion()`** in `derive.ts`: the possibilities, their sum, how much is covered, and what is still missing a figure.
+- **The waterfall on Resumen** — `entradas − fijos − compra registrada = disponible − esporádicos = margen`, with the two subtotals ruled off. A negative `disponible` and a negative `margen` are different emergencies, and the banner under it says which one you are in.
+- **`monthlyTotals` now reports `fijosCents` and `esporadicosCents`** beside `outCents`, which stays the sum of both so nothing that reads it needs to know the split exists.
+- 11 new tests, including the negative ones: a possibility must not reach `monthlyTotals`, `upfront`, `breakdown` or `derived.costes`.
+
+### Changed
+- **The colchón target is no longer stored.** `Scenario.buffer` is gone from the type; the target is `sum(critico rows)`, derived on every read, so it can never disagree with the list that justifies it. The Ajustes field is now a read-only figure that says where it went.
+- **Storage schema v5**, read-compatible with v4. A payload with a stored `buffer.targetCents` opens with that amount as the **first line of its cushion** — labelled, noted, and there to be broken down — rather than losing it. An absent `kind` reads as `fijo`, which is what every row written before the field existed actually was.
+- **The template's five contingencies are `critico` and `activo`**, not `pausado`. Nothing in the template is switched off any more, and `pausado` goes back to meaning only that.
+- **The template's fund contribution is `esporadico`.** It is regular, so the word reads oddly — but the axis is how *committed* the money is, and paying yourself is the first thing that stops in a bad month. Above the line it would disappear into `disponible` and the app would present a choice as a bill.
+
+### Fixed
+- **The `IMPORTE` cell in Costes no longer clips its own value.** It was rendering `650` beside a stray `€` at nine columns; the new tenth column would have made it worse, so the table's min-width went up with the column count instead of being taken out of the other cells.
+
+### Notes
+- **`kind` is deliberately not `priority`.** "I need this to live" and "I owe this on the 1st" are different questions — the gym is `deseable` and still leaves the account every month — and `priority` already carries the move-in minimum in Muebles, so overloading it would move two unrelated figures with one edit.
+- **A `critico` row is excluded in four separate places** (`countsMonthly`, `countsUpfront`, `breakdown`, `derived.costes`) and the one that gets forgotten is the one that announces moving out costs 8.400 € on day one. There is no static check for it; there are tests.
+- The waterfall's `margen` is the same number as `balance`, reached the long way. There is a test whose only job is that they agree.
+
+---
+
 ## Unreleased — a shopping log, by product, that lands in the monthly total
 
 The app modelled what things *should* cost and had no way to record what they did. **Compras** is the other half: one line per thing bought, grouped by product, averaged per day and scaled to a month, and added to salidas. It is the only screen in the app about money already spent, and `CLAUDE.md` used to promise there would never be one — see the Notes for why that changed and what was kept from the original argument.
@@ -19,6 +49,7 @@ The app modelled what things *should* cost and had no way to record what they di
 - **`src/lib/purchases.ts`** — the whole calculation, with 28 tests: the window, the monthly rate, the product and category rollups, and `overlaps()`.
 - **The double-count guard.** `overlaps()` finds any category holding both logged purchases and a live recurring estimate; the tab draws an amber banner naming it with both figures, and one button pauses the estimates it names. Resumen carries the short version of the same warning under the breakdown bars.
 - **`store.pauseEntries(ids)`**, which exists for that button and nothing else.
+- **A mobile fork, `src/tabs/ComprasMobile.tsx`** — the second one in the app, and the first forked for *when* a screen is used rather than how wide it is. Cards grouped by day with the day's total in the header, the monthly equivalent in a sticky footer, and the amount on line one instead of behind a horizontal scroll. Compras now renders bare (edge to edge) on a phone, like Costes.
 - **Storage schema v4**, read-compatible with v3: a payload with no `purchases` key opens with an empty log, which is exactly what its absence meant.
 
 ### Changed

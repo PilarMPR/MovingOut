@@ -27,7 +27,7 @@ src/tabs/            one file per screen, assembled from src/components/
 
 A calculation in a component is a bug (`IND007`): two screens will eventually disagree about what "monthly total" means. A `localStorage` call outside `storage.ts` is a bug (`IND006`): schema versioning and export stop being coherent the moment there are two doors.
 
-The payoff is that `src/lib/` is trivially testable — plain in, plain out, no mocking — and that is where the tests go. All 82 of them run without a DOM.
+The payoff is that `src/lib/` is trivially testable — plain in, plain out, no mocking — and that is where the tests go. All 178 of them run without a DOM.
 
 ### The modules
 
@@ -37,7 +37,7 @@ The payoff is that `src/lib/` is trivially testable — plain in, plain out, no 
 | `lib/frequency.ts` | `toMonthly()` and the `÷2` / `÷12` annotation. The only place a bimonthly bill becomes a monthly figure |
 | `lib/history.ts` | append-only revisions, per-entry deltas, the cross-item log, the Historial KPI summary |
 | `lib/purchases.ts` | the shopping log: the averaging window, the monthly rate, the product and category rollups, and `overlaps()` — the double-count guard |
-| `lib/derive.ts` | every figure on every screen: totals, the upfront ledger, breakdown, coverage, drift, verdict, the sixth KPI, furniture totals, project progress, scenario comparison |
+| `lib/derive.ts` | every figure on every screen: totals split by `kind`, the waterfall, the cushion and its target, the upfront ledger, breakdown, coverage, drift, verdict, the sixth KPI, furniture totals, project progress, scenario comparison |
 | `lib/storage.ts` | load, save, `DEFAULTS`, `ensureShape`, JSON export/import |
 | `lib/seed.ts` | `docs/COST-CHECKLIST.md` turned into entries, amounts blank |
 | `lib/id.ts` | ids for entries, scenarios, projects |
@@ -73,9 +73,11 @@ All of them come out of `derive.ts`. The ones with a rule behind them:
 | `verdict` | `falta` below zero, `justo` below 5 % of monthly salidas, `ok` above. The marginal band exists because a balance can survive on paper and not in life |
 | `maxAffordableRentCents` | A share of income, and nothing more. It never gates an input |
 | `drift` | Current burn against burn at the first revision of every entry. `null` until something has actually been revised — a drift of zero would claim the question had been asked and answered |
-| `breakdown` | Salidas by category. Paused categories stay in the list, with no bar and the word instead of a number |
+| `breakdown` | Salidas by category, the shopping log included. Paused categories stay in the list, with no bar and the word instead of a number. Possibilities are not in it at all |
+| `waterfall` | The balance reached in two steps instead of one. `margen` equals `balance`; the point is `disponible`, the subtotal between them |
+| `cushion` | The `critico` rows and their sum. **The only source of a colchón target** — nothing stores one |
 
-`countsMonthly()` and `countsUpfront()` are the two predicates everything else is built on. `pausado` is the deliberate exclusion; `pendiente` still counts, because an annual premium you have not paid yet is still a cost of living there. Furniture only enters `upfrontCash` when it is `esencial` — the minimum to move in is what you cannot move in without.
+`countsMonthly()` and `countsUpfront()` are the two predicates everything else is built on, and `isPossibility()` short-circuits both. `pausado` is the deliberate exclusion; `pendiente` still counts, because an annual premium you have not paid yet is still a cost of living there. Furniture only enters `upfrontCash` when it is `esencial` — the minimum to move in is what you cannot move in without.
 
 ---
 
@@ -123,7 +125,26 @@ Two implementation notes that exist to satisfy the static check, and will bite w
 - `DEFAULTS` is a concise arrow body returning an object literal, `(...) => ({ … })`. `check_ind003` extracts the depth-1 keys by walking from the first `{`, so a `function` form would bury them one brace deeper and silently disable the parity check.
 - The module doc comment does not write `DEFAULTS()` or `ensureShape()` in call syntax, because that check does not skip comments and will match the prose instead of the code.
 
-`version` is `4`. Version 1 predates `Entry.hasAmount`; the backfill reads a saved amount above zero as a real estimate and a saved zero as a blank. Version 3 added the editable `categories` / `rooms` lists, and version 4 `Scenario.purchases` — an absent key there means an empty log, which is exactly what its absence meant.
+### Kind, and the four exclusions
+
+`Entry.kind` is `fijo | esporadico | critico`. The first two split salidas so the balance can be reached in two steps rather than one — `in − fijos − log = disponible`, `disponible − esporádicos = margen` — and a negative subtotal at each step means a different emergency.
+
+`critico` is the load-bearing one: **a possibility, not an expense**. It is excluded in four separate places, and they are separate because they answer different questions:
+
+| where | question |
+|---|---|
+| `countsMonthly` | does it recur? |
+| `countsUpfront` | is it cash needed at the door? |
+| `breakdown` | is it somewhere the money goes? |
+| `derived.costes` | is it a row in the grid? |
+
+Forget the second and the app announces that moving out costs 8.400 € on day one — which is the bug the template's `pausado` contingencies were a workaround for, before `kind` existed. There is no static check; `derive.test.ts` holds all four, and a fifth total added later needs its own assertion.
+
+The colchón target is `cushion().targetCents`, the sum of those rows. There is no stored target and no `Buffer` type: a stored number and a list that justifies it are two things that can disagree, and only one of them can be right.
+
+`version` is `5`. Version 4 predates `Entry.kind` and stored the colchón target as `Scenario.buffer.targetCents`; the backfill reads an absent `kind` as `fijo`, and turns a stored target into a single `critico` entry carrying that amount, so a v4 budget opens with its target intact and its first possibility already written down. Version 3 predates `Scenario.purchases`.
+
+Version 1 predates `Entry.hasAmount`; the backfill reads a saved amount above zero as a real estimate and a saved zero as a blank. Version 3 added the editable `categories` / `rooms` lists, and version 4 `Scenario.purchases` — an absent key there means an empty log, which is exactly what its absence meant.
 
 **The IND003 parity check does not reach that far down.** It walks the depth-1 keys of `DEFAULTS()`, so it guards `categories` and `settings` and says nothing about a new field on a `Scenario`, an `Entry` or a `Purchase`. `purchases` shipped its backfill because the tests failed loudly, not because the checker spoke. Anything nested is guarded by `storage.test.ts` or by nothing.
 

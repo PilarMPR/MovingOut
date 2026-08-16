@@ -169,13 +169,27 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 /* ── tables ────────────────────────────────────────────────── */
 .tblwrap{overflow-x:auto;}
 table{width:100%;border-collapse:separate;border-spacing:0;}
-.tbl-costes{min-width:1080px;}
+/* Ten columns since `CLASE` joined them. The width went up with the column
+   count rather than being taken out of the other cells — squeezing `IMPORTE`
+   is how an amount ends up rendering as `650` beside a stray `€`. */
+.tbl-costes{min-width:1190px;}
+.tbl-costes th:nth-child(8),.tbl-costes td:nth-child(8){min-width:120px;}
 .tbl-rooms{min-width:760px;}
 .tbl-hist{min-width:760px;}
 /* The shopping log is five columns wide and stays readable on a phone in
    landscape; the product rollup is all figures, so it packs tighter. */
 .tbl-compras{min-width:720px;}
 .tbl-prod{min-width:620px;}
+/* The colchón is three columns and reads as a list rather than a ledger: it is
+   short on purpose, and nothing in it is a number you owe. */
+.tbl-colchon{min-width:520px;}
+.tbl-colchon th:first-child,.tbl-colchon td:first-child{padding-left:11px;min-width:200px;}
+.tbl-colchon th:nth-child(2),.tbl-colchon td:nth-child(2){min-width:130px;}
+.tbl-colchon th:last-child,.tbl-colchon td:last-child{width:100%;min-width:180px;padding-right:11px;}
+/* Hollow, where a concepto's dot is filled: the mark of something that has not
+   happened. It takes no semantic hue — a possibility is not good or bad. */
+.pdot{width:5px;height:5px;border-radius:50%;flex:none;background:transparent;
+  border:1px solid var(--dash);}
 th{font-family:var(--mono);font-weight:500;font-size:8px;letter-spacing:.15em;
   text-transform:uppercase;color:var(--muted);background:var(--card);
   border-bottom:1px solid var(--border-2);padding:8px 5px;text-align:left;white-space:nowrap;}
@@ -350,6 +364,27 @@ tr.drawer:hover td{background:var(--sunk);}
 .upnote{margin:0;font-size:10.5px;line-height:1.5;color:var(--muted);}
 .upnote b{color:var(--text);font-weight:600;}
 
+/* ── the waterfall ─────────────────────────────────────────── */
+/* The balance in the order the money goes. Two subtotals, and they are the
+   only rows with a rule above them: the arithmetic is the layout. */
+.fall{padding:12px 14px 4px;display:flex;flex-direction:column;}
+.fall .frow,.fall .fsum{display:flex;align-items:baseline;gap:12px;padding:7px 0;}
+.fall .fl{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--text);}
+.fall .fl em{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--faint);
+  font-style:normal;}
+.fall .fv{margin-left:auto;font-family:var(--mono);font-weight:500;font-size:12px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+.fall .fsum{border-top:1px solid var(--border-2);margin-top:2px;}
+.fall .fsum .fl{font-weight:600;font-family:var(--mono);font-size:9px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--muted);}
+.fall .fsum .fv{font-family:var(--display);font-weight:600;font-size:20px;letter-spacing:-.3px;
+  color:var(--text);}
+.fall .fsum.end .fv{font-size:24px;}
+/* A negative subtotal is the whole point of splitting them: `disponible` in the
+   red means the rent, `margen` in the red means the extras. */
+.fall .fsum.neg .fv{color:var(--red);}
+.fall .fsum.neg .fl{color:var(--red);}
+
 /* ── insight line ──────────────────────────────────────────── */
 /* The answer, in a sentence, tinted by the sign of the answer. */
 .insight{display:flex;gap:14px;align-items:flex-start;border:1px solid;border-radius:var(--r-lg);
@@ -455,6 +490,13 @@ tr.drawer:hover td{background:var(--sunk);}
 .field .fin:focus{outline:none;background:var(--card);border-color:var(--accent);
   box-shadow:0 0 0 3px var(--accent-t);}
 .field .fhint{font-size:11.5px;color:var(--muted);line-height:1.5;}
+/* A field-shaped read-only figure: the colchón target, which is summed rather
+   than typed. It keeps the field's metrics so the row does not reflow, and
+   loses the input's affordances so it never looks editable. */
+.field .fin-derived{display:flex;align-items:baseline;gap:8px;background:transparent;
+  border-style:dashed;color:var(--text);}
+.field .fin-derived span{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint);}
 .empty-note{padding:22px 14px;text-align:center;color:var(--muted);font-size:12.5px;}
 
 /* ── the two editable lists: categories and rooms ─────────────
@@ -516,6 +558,13 @@ tr.drawer:hover td{background:var(--sunk);}
 .mcard.s-pendiente::before{background:var(--amber);}
 .mcard.s-pagado::before{background:var(--blue);}
 .mcard.s-pausado::before{background:var(--dash);}
+/* A purchase has no status — it happened. The only thing worth marking is a
+   row whose amount has not been typed yet, which is the same admission the
+   desktop grid makes with a dashed `— —`. */
+.mcard.s-blank::before{background:var(--dash);}
+/* The card's first line is the tap target for the whole card. A button, so it
+   is reachable by keyboard and announces its expanded state. */
+.mcard .m1.mtap{background:none;border:none;padding:0;text-align:left;width:100%;}
 .mcard.open{background:var(--sunk);box-shadow:inset 0 0 0 1px var(--accent);}
 .mcard .m1{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
 .mcard .m1 b{font-weight:600;font-size:13px;}
@@ -528,8 +577,15 @@ tr.drawer:hover td{background:var(--sunk);}
 .mcard .mopen{display:grid;gap:7px;padding-top:7px;border-top:1px solid var(--border);}
 .mcard .mrow{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
 .mbar{display:flex;gap:5px;padding:9px 12px;overflow-x:auto;background:var(--sunk);
-  border-bottom:1px solid var(--border);scrollbar-width:none;}
+  border-bottom:1px solid var(--border);scrollbar-width:none;align-items:center;}
 .mbar::-webkit-scrollbar{display:none;}
+/* The log's coverage, beside its filters: total, days, and whether the monthly
+   figure has settled. It is context for the footer figure, not a control. */
+.mbar .mcount{margin-left:auto;padding-left:8px;font-family:var(--mono);font-size:8.5px;
+  letter-spacing:.04em;color:var(--muted);white-space:nowrap;}
+/* Group label for a list that is not in a panel — the phone's "Por producto". */
+.mgrp{font-family:var(--mono);font-weight:500;font-size:8px;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--muted);padding:4px 0 2px;}
 /* Sits directly above the bottom nav, never behind it: on a phone the whole
    reason for editing a number is watching this figure move. */
 .mfoot{position:sticky;bottom:var(--mnav-h);background:var(--card);

@@ -10,7 +10,15 @@ import { delta } from '../lib/history';
 import { formatEUR, formatSignedEUR, formatSignedPercent } from '../lib/money';
 import { idsOf, labelsOf } from '../lib/taxonomy';
 import type { Store } from '../state/store';
-import { DIRECTIONS, FREQUENCIES, PRIORITIES, STATUSES, type Entry } from '../types';
+import {
+  DIRECTIONS,
+  ENTRY_KINDS,
+  FREQUENCIES,
+  PRIORITIES,
+  STATUSES,
+  type Entry,
+} from '../types';
+import { Colchon } from './Colchon';
 import { applyFilters, type Filters } from './Costes';
 
 /**
@@ -125,6 +133,13 @@ function Card({ entry, store, categoryIds, categoryLabels, open, onToggle }: Car
               labels={es.frequency}
               ariaLabel={es.costes.colFrequency}
               onChange={(frequency) => store.patchEntry(entry.id, { frequency })}
+            />
+            <Select
+              value={entry.kind}
+              options={ENTRY_KINDS}
+              labels={es.kind}
+              ariaLabel={es.costes.colKind}
+              onChange={(kind) => store.patchEntry(entry.id, { kind })}
             />
             <Select
               value={entry.category}
@@ -244,6 +259,13 @@ export function CostesMobile({ store, filters, onFilters }: Props) {
       </div>
 
       <AddRow label={es.costes.add} onClick={() => store.addEntry({ label: es.costes.newLabel })} />
+
+      {/* The cushion is part of Costes on a phone too. It sits after the add-row
+          because it is the second thing you write, not the second thing you
+          read: possibilities are noted once and revisited rarely. */}
+      <div className="pad">
+        <Colchon store={store} />
+      </div>
     </>
   );
 }

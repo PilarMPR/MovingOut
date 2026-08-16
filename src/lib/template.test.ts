@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { derive, monthlyTotals, upfront } from './derive';
 import { toMonthly } from './frequency';
 import {
-  templateBufferTargetCents,
+  templateCushionTargetCents,
   templateCategories,
   templateCount,
   templateScenario,
@@ -45,9 +45,11 @@ describe('templateScenario', () => {
     expect(derived().shortfallCents).toBe(0);
   });
 
-  it('sets the colchón target from the contingencies, not from a literal', () => {
-    expect(templateBufferTargetCents()).toBe(SHEET.fondoObjetivo);
-    expect(scenario().buffer.targetCents).toBe(templateBufferTargetCents());
+  it('derives the colchón target from the contingencies, not from a literal', () => {
+    expect(templateCushionTargetCents()).toBe(SHEET.fondoObjetivo);
+    // The target is nowhere stored: it is the sum of the possibilities, read
+    // back through the same function every screen reads it through.
+    expect(derived().cushion.targetCents).toBe(SHEET.fondoObjetivo);
   });
 
   /**
@@ -60,18 +62,31 @@ describe('templateScenario', () => {
     expect(ledger.cashCents).toBe(0);
     expect(ledger.spendCents).toBe(0);
     expect(ledger.lines).toHaveLength(0);
-    // Nor are they missing an amount — they have one, they are just paused.
+    // Nor are they missing an amount — they have one, they are just possible.
     expect(ledger.missingCount).toBe(0);
   });
 
-  it('files the paused contingencies where the fund is', () => {
-    const paused = scenario().entries.filter((entry) => entry.status === 'pausado');
-    expect(paused).toHaveLength(5);
-    expect(paused.every((entry) => entry.frequency === 'unico')).toBe(true);
-    expect(paused.every((entry) => entry.category === 'catastrofe')).toBe(true);
+  it('makes the contingencies possibilities rather than switched-off costs', () => {
+    const criticos = scenario().entries.filter((entry) => entry.kind === 'critico');
+    expect(criticos).toHaveLength(5);
+    expect(criticos.every((entry) => entry.frequency === 'unico')).toBe(true);
+    expect(criticos.every((entry) => entry.category === 'catastrofe')).toBe(true);
+    // They used to need `pausado` to stay out of the totals. `kind` does it now,
+    // so nothing in the template is switched off any more.
+    expect(scenario().entries.some((entry) => entry.status === 'pausado')).toBe(false);
     let total = 0;
-    for (const entry of paused) total += entry.amountCents;
+    for (const entry of criticos) total += entry.amountCents;
     expect(total).toBe(SHEET.fondoObjetivo);
+  });
+
+  it('splits the sheet’s own columns onto the waterfall', () => {
+    const w = derived().waterfall;
+    expect(w.fijosCents).toBe(SHEET.fijos);
+    // The esporádicos column plus the fund contribution, which is a choice
+    // rather than a bill and sits below `disponible` with them.
+    expect(w.esporadicosCents).toBe(SHEET.esporadicos + SHEET.aportacion);
+    expect(w.disponibleCents).toBe(SHEET.ingreso - SHEET.fijos);
+    expect(w.margenCents).toBe(SHEET.ahorroLibre);
   });
 
   it('starts every row with its figure already in the log', () => {
@@ -95,7 +110,10 @@ describe('templateScenario', () => {
 
   it('is all conceptos — the sheet has no furniture', () => {
     expect(derived().furniture).toHaveLength(0);
-    expect(derived().costes).toHaveLength(templateCount());
+    // The five possibilities are not conceptos: they have their own section,
+    // so the grid holds the rest of the sheet and nothing else.
+    expect(derived().costes).toHaveLength(templateCount() - derived().cushion.lines.length);
+    expect(derived().cushion.lines).toHaveLength(5);
   });
 
   it('gives every row real copy, never a leaked key', () => {
@@ -202,7 +220,8 @@ describe('the prorated esporádicos', () => {
     // The sheet's column is "media mensual": the division already happened.
     // toMonthly() must therefore be the identity on every one of these rows.
     for (const entry of scenario().entries) {
-      if (entry.status === 'pausado') continue;
+      // The possibilities are `unico`, and a one-off has no monthly equivalent.
+      if (entry.kind === 'critico') continue;
       expect(toMonthly(entry.amountCents, entry.frequency)).toBe(entry.amountCents);
     }
   });

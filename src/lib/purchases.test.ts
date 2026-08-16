@@ -31,6 +31,7 @@ function entry(patch: Partial<Entry> = {}): Entry {
     frequency: 'mensual',
     priority: 'esencial',
     status: 'activo',
+    kind: 'fijo',
     amountCents: 20000,
     hasAmount: true,
     history: [],

@@ -92,6 +92,92 @@ function SixthCard({ sixth }: { sixth: SixthKpi }) {
   );
 }
 
+/**
+ * The balance in the order the money actually goes.
+ *
+ * The subtotal in the middle is the point of the whole panel: `disponible` is
+ * what is left once the unavoidable has gone, and it is the difference between
+ * "I cannot pay the rent" and "I cannot also buy clothes this year". One
+ * negative number for both was the app answering a question nobody asked.
+ *
+ * Possibilities are not here. They are not money that goes anywhere — they are
+ * in the colchón, sizing a target.
+ */
+function WaterfallPanel({ derived }: { derived: Derived }) {
+  const w = derived.waterfall;
+  const empty = w.inCents === 0 && w.fijosCents === 0 && w.loggedCents === 0;
+
+  const note = empty
+    ? es.resumen.wNoteEmpty
+    : w.disponibleCents < 0
+      ? es.resumen.wNoteBad
+      : w.margenCents < 0
+        ? es.resumen.wNoteTight
+        : es.resumen.wNoteOk;
+
+  const rows: { label: string; sub?: string; cents: number; sign: '−' | ''; muted?: boolean }[] = [
+    { label: es.resumen.wIn, cents: w.inCents, sign: '' },
+    { label: es.resumen.wFijos, sub: es.resumen.wFijosSub, cents: w.fijosCents, sign: '−' },
+  ];
+  // The log only earns a line once there is one — an empty log is not a zero
+  // you should have to read past to reach the subtotal.
+  if (w.loggedCents > 0) {
+    rows.push({
+      label: es.resumen.wLogged,
+      sub: es.resumen.wLoggedSub,
+      cents: w.loggedCents,
+      sign: '−',
+    });
+  }
+
+  return (
+    <Panel
+      label={es.resumen.wPanel}
+      tone={empty ? 'accent' : w.disponibleCents < 0 ? 'red' : w.margenCents < 0 ? 'amber' : 'green'}
+      body={<p className="upnote">{note}</p>}
+    >
+      <div className="fall">
+        {rows.map((row) => (
+          <div className="frow" key={row.label}>
+            <span className="fl">
+              {row.label}
+              {row.sub !== undefined && <em>{row.sub}</em>}
+            </span>
+            <span className="fv">
+              {row.sign}
+              {formatEUR(row.cents)}
+            </span>
+          </div>
+        ))}
+
+        <div className={w.disponibleCents < 0 ? 'fsum neg' : 'fsum'}>
+          <span className="fl">
+            {es.resumen.wDisponible}
+            <em>{es.resumen.wDisponibleSub}</em>
+          </span>
+          <span className="fv">{formatEUR(w.disponibleCents)}</span>
+        </div>
+
+        <div className="frow">
+          <span className="fl">
+            {es.resumen.wEsporadicos}
+            <em>{es.resumen.wEsporadicosSub}</em>
+          </span>
+          <span className="fv">−{formatEUR(w.esporadicosCents)}</span>
+        </div>
+
+        <div className={w.margenCents < 0 ? 'fsum end neg' : 'fsum end'}>
+          <span className="fl">
+            {es.resumen.wMargen}
+            <em>{es.resumen.wMargenSub}</em>
+          </span>
+          <span className="fv">{formatEUR(w.margenCents)}</span>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 function InsightSentence({ derived }: { derived: Derived }) {
   const { totals, verdict, sixth, runwayMonths, coverage } = derived;
   const missing = coverage.total - coverage.withAmount;
@@ -289,6 +375,8 @@ export function Resumen({ store }: { store: Store }) {
           />
         </div>
       </Panel>
+
+      <WaterfallPanel derived={derived} />
 
       <div className="res-split">
         <Panel

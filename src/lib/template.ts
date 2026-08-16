@@ -31,17 +31,28 @@
  *     real frequency *of the provision*. IND004 forbids summing a bimonthly
  *     water bill as though it were monthly; there is no such row here.
  *
- *   · **The five contingencies arrive `pausado`.** They are the arithmetic
- *     behind the buffer target, not costs. Entered live they would be one-offs
- *     and land in `upfrontCash`, claiming you need 8.400 € before you can sleep
- *     there. Paused, they stay visible as the reasoning and count toward
- *     nothing — which is exactly what `pausado` is for.
+ *   · **The five contingencies arrive `critico`, and no longer `pausado`.**
+ *     They are the arithmetic behind the colchón target, not costs — and their
+ *     sum *is* that target now, so the 8.400 € is nowhere in this file. They
+ *     used to arrive paused, because paused was the only way to keep a row
+ *     visible and out of every total; entered live they would have been one-offs
+ *     landing in `upfrontCash`, claiming you need 8.400 € before you can sleep
+ *     there. `kind` says what they are instead of switching them off, so
+ *     `pausado` is free to mean only "switched off" again.
+ *
+ *   · **The fund contribution is `esporadico`, not `fijo`, and that is a
+ *     judgement.** It is regular, so "esporádico" reads oddly — but the axis is
+ *     how *committed* the money is, not how regular, and paying yourself is the
+ *     first thing that stops in a bad month. Above the line it would vanish
+ *     into `disponible` and the app would quietly present a choice as a bill;
+ *     below it, you can see the 100 € going to the colchón and decide.
  */
 import type {
   Category,
   Cents,
   Direction,
   Entry,
+  EntryKind,
   Frequency,
   IsoDate,
   Priority,
@@ -74,11 +85,12 @@ interface Row {
   frequency: Frequency;
   priority: Priority;
   status: Status;
+  kind: EntryKind;
   /** The sheet's figure, in whole euros. */
   euros: number;
 }
 
-/** A live monthly cost. */
+/** A committed monthly cost — the sheet's *gastos fijos* column. */
 const monthly = (
   key: string,
   category: Category,
@@ -91,7 +103,18 @@ const monthly = (
   frequency: 'mensual',
   priority,
   status: 'activo',
+  kind: 'fijo',
   euros,
+});
+
+/**
+ * The sheet's *esporádicos* column: a yearly spend divided by twelve, so
+ * `mensual` is the real frequency of the provision. Below `disponible` in the
+ * waterfall, which is the whole point of tagging them.
+ */
+const sporadic = (key: string, category: Category, euros: number): Row => ({
+  ...monthly(key, category, euros, 'deseable'),
+  kind: 'esporadico',
 });
 
 const income = (key: string, euros: number): Row => ({
@@ -101,17 +124,23 @@ const income = (key: string, euros: number): Row => ({
   frequency: 'mensual',
   priority: 'esencial',
   status: 'activo',
+  kind: 'fijo',
   euros,
 });
 
-/** One line of the sheet's catástrofe column: what the fund is *for*. Never a total. */
+/**
+ * One line of the sheet's catástrofe column: what the fund is *for*. Never in
+ * any total — `critico` is what keeps it out — and these five added together
+ * are the colchón target.
+ */
 const contingency = (key: string, euros: number): Row => ({
   key,
   direction: 'salida',
   category: EMERGENCY,
   frequency: 'unico',
   priority: 'esencial',
-  status: 'pausado',
+  status: 'activo',
+  kind: 'critico',
   euros,
 });
 
@@ -137,17 +166,17 @@ const FIJOS: Row[] = [
  * outside Otros, which is what the new category is for.
  */
 const ESPORADICOS: Row[] = [
-  monthly('ropa', SPORADIC, 30, 'deseable'),
-  monthly('ocio', 'ocio', 60, 'deseable'),
-  monthly('regalos', SPORADIC, 20, 'deseable'),
-  monthly('peluqueria', SPORADIC, 15, 'deseable'),
-  monthly('mantenimiento', SPORADIC, 15),
-  monthly('viajes', SPORADIC, 50, 'deseable'),
-  monthly('materialTecnico', SPORADIC, 0, 'deseable'),
+  sporadic('ropa', SPORADIC, 30),
+  sporadic('ocio', 'ocio', 60),
+  sporadic('regalos', SPORADIC, 20),
+  sporadic('peluqueria', SPORADIC, 15),
+  sporadic('mantenimiento', SPORADIC, 15),
+  sporadic('viajes', SPORADIC, 50),
+  sporadic('materialTecnico', SPORADIC, 0),
 ];
 
-/** GASTOS CATÁSTROFE. One live row builds the fund; five paused ones size it. */
-const FONDO: Row[] = [monthly('aportacionFondo', EMERGENCY, 100)];
+/** GASTOS CATÁSTROFE. One row builds the fund; five possibilities size it. */
+const FONDO: Row[] = [sporadic('aportacionFondo', EMERGENCY, 100)];
 
 const CONTINGENCIAS: Row[] = [
   contingency('portatil', 2100),
@@ -172,6 +201,7 @@ function toEntry(row: Row, date: IsoDate): Entry {
     frequency: row.frequency,
     priority: row.priority,
     status: row.status,
+    kind: row.kind,
     amountCents,
     hasAmount: true,
     // The figure the template arrives with *is* the original estimate, so it
@@ -185,11 +215,12 @@ function toEntry(row: Row, date: IsoDate): Entry {
 }
 
 /**
- * The colchón target: the five contingencies added up, rather than the 8.400 €
- * the sheet prints. Same number, but derived — so editing a contingency can
- * never leave the target quietly disagreeing with its own arithmetic.
+ * What the sheet's catástrofe column adds up to — 8.400 €, and nowhere written
+ * as that. Exported for the tests that check the template against the sheet;
+ * the app never calls it, because `cushion()` sums the rows themselves and the
+ * target is that sum wherever it is read.
  */
-export function templateBufferTargetCents(): Cents {
+export function templateCushionTargetCents(): Cents {
   let total = 0;
   for (const row of CONTINGENCIAS) total += row.euros * CENTS_PER_EURO;
   return total;
@@ -234,7 +265,6 @@ export function templateScenario(name: string): Scenario {
     createdAt: date,
     // The sheet's projection starts from zero and accumulates the free saving.
     savingsCents: 0,
-    buffer: { targetCents: templateBufferTargetCents() },
     entries: ROWS.map((row) => toEntry(row, date)),
     projects: [],
     // The sheet is a forecast, and it has no receipts behind it. The shopping

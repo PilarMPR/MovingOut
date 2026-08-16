@@ -32,12 +32,25 @@ export function isFurniture(entry: Entry): boolean {
 }
 
 /**
+ * A possibility rather than an expense. It has never been paid, it may never
+ * be, and it is in no total anywhere in the app — see `EntryKind` in types.ts.
+ * What it does instead is size the colchón, in `cushion()` below.
+ */
+export function isPossibility(entry: Entry): boolean {
+  return entry.kind === 'critico';
+}
+
+/**
  * Counts toward a monthly total. `pausado` is the deliberate exclusion;
  * `pendiente` still counts, because an annual insurance premium you have not
  * paid yet is still a cost of living there.
+ *
+ * `critico` is excluded before any of that, and for a different reason: paused
+ * is a row you switched off, a possibility is a row that was never on.
  */
 export function countsMonthly(entry: Entry): boolean {
   return (
+    !isPossibility(entry) &&
     entry.status !== 'pausado' &&
     entry.shouldNotPay !== true &&
     entry.hasAmount &&
@@ -53,6 +66,10 @@ export function countsMonthly(entry: Entry): boolean {
  * you genuinely cannot move in without, and a nice armchair is not that.
  */
 export function countsUpfront(entry: Entry): boolean {
+  // A possibility is never cash you need on day one. This is the single check
+  // that stops the cushion — 8.400 € of things that have not happened — being
+  // announced as the price of moving in (docs/DEVLOG.md, 2026-08-15).
+  if (isPossibility(entry)) return false;
   if (entry.frequency !== 'unico' || entry.direction !== 'salida') return false;
   if (entry.status === 'pagado' || entry.status === 'pausado') return false;
   if (entry.shouldNotPay === true || !entry.hasAmount) return false;
@@ -69,14 +86,27 @@ export interface MonthlyTotals {
   /** How many conceptos fed each side — the KPI sub-line prints it. */
   inCount: number;
   outCount: number;
+  /** Salidas that are committed. What a bad month actually threatens. */
+  fijosCents: Cents;
+  /** Salidas that are real but irregular, and yours to choose. */
+  esporadicosCents: Cents;
 }
 
-/** Frequency-normalised totals per direction. Everything goes via toMonthly(). */
+/**
+ * Frequency-normalised totals per direction. Everything goes via toMonthly().
+ *
+ * Salidas are also split by `kind`, because "te faltan 120 €" means two very
+ * different things depending on which half is short: a fijo you cannot cover
+ * is a crisis, an esporádico you cannot fund is a decision. `outCents` stays
+ * the sum of both, so nothing that reads it needs to know the split exists.
+ */
 export function monthlyTotals(entries: Entry[]): MonthlyTotals {
   let inCents = 0;
   let outCents = 0;
   let inCount = 0;
   let outCount = 0;
+  let fijosCents = 0;
+  let esporadicosCents = 0;
   for (const entry of entries) {
     if (!countsMonthly(entry)) continue;
     const monthly = toMonthly(entry.amountCents, entry.frequency);
@@ -87,9 +117,19 @@ export function monthlyTotals(entries: Entry[]): MonthlyTotals {
     } else {
       outCents += monthly;
       outCount += 1;
+      if (entry.kind === 'esporadico') esporadicosCents += monthly;
+      else fijosCents += monthly;
     }
   }
-  return { inCents, outCents, balanceCents: inCents - outCents, inCount, outCount };
+  return {
+    inCents,
+    outCents,
+    balanceCents: inCents - outCents,
+    inCount,
+    outCount,
+    fijosCents,
+    esporadicosCents,
+  };
 }
 
 /**
@@ -108,7 +148,115 @@ export function monthlyTotals(entries: Entry[]): MonthlyTotals {
 export function withLogged(totals: MonthlyTotals, loggedMonthlyCents: Cents): MonthlyTotals {
   if (loggedMonthlyCents === 0) return totals;
   const outCents = totals.outCents + loggedMonthlyCents;
+  // Deliberately not added to `fijosCents` or `esporadicosCents`: the log is
+  // not a forecast of either kind, it is what already left the account, and it
+  // gets its own line in the waterfall for exactly that reason.
   return { ...totals, outCents, balanceCents: totals.inCents - outCents };
+}
+
+// ── the waterfall ────────────────────────────────────────────────────────
+
+/**
+ * The balance, in the order the money actually goes, rather than as one
+ * subtraction.
+ *
+ * `disponible` is the number the app was missing: what is left once the
+ * unavoidable has gone, which is what a bad month threatens and what the
+ * irregular spending is funded out of. A negative `disponible` and a negative
+ * `margen` are different emergencies — the first means you cannot pay the
+ * rent, the second means you cannot also buy clothes this year — and printing
+ * one figure for both was the app answering a question nobody asked.
+ *
+ * The lines are ordered by how certain the money is: what already left the
+ * account, then what is owed, then what is chosen. Possibilities never appear;
+ * they are not money that goes anywhere.
+ */
+export interface Waterfall {
+  inCents: Cents;
+  fijosCents: Cents;
+  /** The shopping log's monthly equivalent — observed, not estimated. */
+  loggedCents: Cents;
+  /** `in − fijos − logged`. What is left to allocate. */
+  disponibleCents: Cents;
+  esporadicosCents: Cents;
+  /** `disponible − esporádicos`. Equal to `balance`, reached the long way. */
+  margenCents: Cents;
+}
+
+export function waterfall(totals: MonthlyTotals, loggedCents: Cents): Waterfall {
+  const disponibleCents = totals.inCents - totals.fijosCents - loggedCents;
+  return {
+    inCents: totals.inCents,
+    fijosCents: totals.fijosCents,
+    loggedCents,
+    disponibleCents,
+    esporadicosCents: totals.esporadicosCents,
+    margenCents: disponibleCents - totals.esporadicosCents,
+  };
+}
+
+// ── the cushion ──────────────────────────────────────────────────────────
+
+export interface CushionLine {
+  id: string;
+  label: string;
+  amountCents: Cents;
+  hasAmount: boolean;
+  note?: string;
+}
+
+export interface Cushion {
+  /** The possibilities, biggest first: the list is read as "what am I covering". */
+  lines: CushionLine[];
+  /** Their sum. **This is the colchón target** — it is never stored (types.ts). */
+  targetCents: Cents;
+  /** Possibilities with no figure yet. The target can only rise. */
+  missingCount: number;
+  /** Savings left after moving in, against the target. */
+  coveredCents: Cents;
+  covered: boolean;
+  /** Share of the target already behind you. `null` when there is no target. */
+  percent: number | null;
+}
+
+/**
+ * The colchón: what could go wrong, what it would cost, and whether the money
+ * is there. The target is summed rather than typed, so it cannot drift from
+ * the list that justifies it.
+ *
+ * `covered` is false when the target is zero, exactly as it was when the
+ * target was a field: reporting "cubierto" against a goal of nothing is a
+ * claim made out of missing data, not an achievement.
+ */
+export function cushion(entries: Entry[], savingsAfterUpfrontCents: Cents): Cushion {
+  const lines: CushionLine[] = [];
+  let targetCents = 0;
+  let missingCount = 0;
+
+  for (const entry of entries) {
+    if (!isPossibility(entry)) continue;
+    if (entry.hasAmount) targetCents += entry.amountCents;
+    else missingCount += 1;
+    const line: CushionLine = {
+      id: entry.id,
+      label: entry.label,
+      amountCents: entry.amountCents,
+      hasAmount: entry.hasAmount,
+    };
+    if (entry.note !== undefined) line.note = entry.note;
+    lines.push(line);
+  }
+
+  lines.sort((a, b) => Number(b.hasAmount) - Number(a.hasAmount) || b.amountCents - a.amountCents);
+
+  return {
+    lines,
+    targetCents,
+    missingCount,
+    coveredCents: savingsAfterUpfrontCents,
+    covered: targetCents > 0 && savingsAfterUpfrontCents >= targetCents,
+    percent: ratioPercent(Math.max(0, savingsAfterUpfrontCents), targetCents),
+  };
 }
 
 // ── the upfront ledger ───────────────────────────────────────────────────
@@ -245,6 +393,9 @@ export function breakdown(entries: Entry[], logged: readonly CategorySpend[] = [
 
   for (const entry of entries) {
     if (entry.direction !== 'salida' || entry.shouldNotPay === true) continue;
+    // A possibility is not somewhere the money goes. Most are `unico` and would
+    // fall out below anyway; this says so for the one tagged monthly.
+    if (isPossibility(entry)) continue;
     if (!isRecurring(entry.frequency)) continue;
     const found = slot(entry.category);
     found.rows += 1;
@@ -401,10 +552,19 @@ export type SixthKpi =
 // ── the whole picture ────────────────────────────────────────────────────
 
 export interface Derived {
-  /** Conceptos — everything that is not furniture. */
+  /**
+   * Conceptos — everything that is not furniture and not a possibility. This is
+   * the Costes grid, and possibilities are not in it: they have their own
+   * section, because a list of things that might happen read as a list of costs
+   * is exactly the confusion `kind` exists to end.
+   */
   costes: Entry[];
   furniture: Entry[];
+  /** The colchón: the possibilities, and the target they add up to. */
+  cushion: Cushion;
   totals: MonthlyTotals;
+  /** The balance in the order the money goes, rather than as one subtraction. */
+  waterfall: Waterfall;
   upfront: Upfront;
   breakdown: CategorySlice[];
   coverage: Coverage;
@@ -440,7 +600,9 @@ export function derive(
   furnitureLabel: string,
   todayDate: IsoDate,
 ): Derived {
-  const costes = scenario.entries.filter((entry) => !isFurniture(entry));
+  const costes = scenario.entries.filter(
+    (entry) => !isFurniture(entry) && !isPossibility(entry),
+  );
   const furniture = scenario.entries.filter(isFurniture);
 
   const spend = loggedSpend(scenario.purchases, todayDate);
@@ -448,6 +610,7 @@ export function derive(
   const totals = withLogged(monthlyTotals(scenario.entries), spend.monthlyCents);
   const ledger = upfront(scenario.entries, furnitureLabel);
   const savingsAfterUpfrontCents = scenario.savingsCents - ledger.cashCents;
+  const reserve = cushion(scenario.entries, savingsAfterUpfrontCents);
   const kind = verdict(totals);
 
   const deficitCents = totals.balanceCents < 0 ? -totals.balanceCents : 0;
@@ -466,10 +629,10 @@ export function derive(
   } else {
     sixth = {
       kind: 'buffer',
-      targetCents: scenario.buffer.targetCents,
-      // No target is not a covered target. Reporting "cubierto" against a goal
-      // of zero would be another claim made out of missing data.
-      covered: scenario.buffer.targetCents > 0 && savingsAfterUpfrontCents >= scenario.buffer.targetCents,
+      // Summed from the possibilities, never stored — so the target and the
+      // list of what it covers cannot drift apart (types.ts).
+      targetCents: reserve.targetCents,
+      covered: reserve.covered,
       savingsAfterUpfrontCents,
     };
   }
@@ -477,13 +640,15 @@ export function derive(
   return {
     costes,
     furniture,
+    cushion: reserve,
     totals,
+    waterfall: waterfall(totals, spend.monthlyCents),
     upfront: ledger,
     breakdown: breakdown(scenario.entries, logged),
     coverage: coverage(costes),
     savingsAfterUpfrontCents,
     runwayMonths,
-    bufferCovered: savingsAfterUpfrontCents >= scenario.buffer.targetCents,
+    bufferCovered: reserve.covered,
     maxAffordableRentCents: percentOf(totals.inCents, settings.maxRentPercent),
     driftCents: drift(scenario.entries),
     verdict: kind,

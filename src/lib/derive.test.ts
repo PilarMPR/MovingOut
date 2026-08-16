@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   breakdown,
   coverage,
+  cushion,
   derive,
   drift,
   furnitureTotals,
@@ -11,6 +12,8 @@ import {
   projectVerdict,
   upfront,
   verdict,
+  waterfall,
+  withLogged,
 } from './derive';
 import { pushRevision } from './history';
 import { byCategory } from './purchases';
@@ -31,6 +34,7 @@ function entry(patch: Partial<Entry> = {}): Entry {
     frequency: 'mensual',
     priority: 'esencial',
     status: 'activo',
+    kind: 'fijo',
     amountCents: 0,
     hasAmount: false,
     history: [],
@@ -50,7 +54,6 @@ function scenario(entries: Entry[], patch: Partial<Scenario> = {}): Scenario {
     situacion: 'estudiante',
     createdAt: '2026-05-12',
     savingsCents: 0,
-    buffer: { targetCents: 0 },
     entries,
     projects: [],
     purchases: [],
@@ -313,6 +316,135 @@ describe('breakdown', () => {
     expect(slices.find((s) => s.category === 'impuestos')?.missingCount).toBe(1);
     // Paused categories sort last so they never head the chart.
     expect(slices[slices.length - 1].category).toBe('ocio');
+  });
+});
+
+describe('kind — how certain the money is', () => {
+  const income = priced(157000, { direction: 'entrada', category: 'ingresos' });
+
+  it('splits salidas into committed and chosen, and still totals both', () => {
+    const totals = monthlyTotals([
+      income,
+      priced(65000, { kind: 'fijo', label: 'Alquiler' }),
+      priced(3000, { kind: 'esporadico', label: 'Ropa' }),
+    ]);
+    expect(totals.fijosCents).toBe(65000);
+    expect(totals.esporadicosCents).toBe(3000);
+    expect(totals.outCents).toBe(68000);
+  });
+
+  it('keeps a possibility out of every total, without needing pausado', () => {
+    const possible = priced(210000, { kind: 'critico', frequency: 'unico', status: 'activo' });
+    const totals = monthlyTotals([income, possible]);
+    expect(totals.outCents).toBe(0);
+    // The regression the whole idea exists for: a live `unico` salida is cash
+    // you need on day one, and 8.400 € of things that have not happened is not.
+    expect(upfront([possible], MUEBLES).cashCents).toBe(0);
+    expect(upfront([possible], MUEBLES).missingCount).toBe(0);
+  });
+
+  it('leaves a possibility out of the breakdown — it is not where money goes', () => {
+    const slices = breakdown([
+      priced(33000, { category: 'vivienda' }),
+      priced(210000, { category: 'otros', kind: 'critico', frequency: 'mensual' }),
+    ]);
+    expect(slices.map((slice) => slice.category)).toEqual(['vivienda']);
+  });
+
+  it('keeps possibilities out of the conceptos grid and in their own section', () => {
+    const d = derive(
+      scenario([
+        income,
+        priced(65000, { label: 'Alquiler' }),
+        priced(210000, { label: 'Portátil roto', kind: 'critico', frequency: 'unico' }),
+      ]),
+      SETTINGS,
+      MUEBLES,
+      TODAY,
+    );
+    expect(d.costes.some((entry) => entry.label === 'Alquiler')).toBe(true);
+    expect(d.costes.some((entry) => entry.label === 'Portátil roto')).toBe(false);
+    expect(d.cushion.lines.map((line) => line.label)).toEqual(['Portátil roto']);
+  });
+});
+
+describe('the cushion', () => {
+  const possible = (cents: number, label: string) =>
+    priced(cents, { label, kind: 'critico', frequency: 'unico' });
+
+  it('sums the possibilities into the target, biggest first', () => {
+    const reserve = cushion([possible(210000, 'Portátil'), possible(500000, 'Paro')], 0);
+    expect(reserve.targetCents).toBe(710000);
+    expect(reserve.lines[0].label).toBe('Paro');
+  });
+
+  it('counts a possibility with no figure as missing — the target can only rise', () => {
+    const reserve = cushion([possible(210000, 'Portátil'), entry({ kind: 'critico', label: 'Sin cifra' })], 0);
+    expect(reserve.targetCents).toBe(210000);
+    expect(reserve.missingCount).toBe(1);
+    expect(reserve.lines).toHaveLength(2);
+  });
+
+  it('is not covered by a target of nothing', () => {
+    const empty = cushion([], 500000);
+    expect(empty.targetCents).toBe(0);
+    expect(empty.covered).toBe(false);
+    expect(empty.percent).toBeNull();
+  });
+
+  it('measures cover against the savings left after moving in', () => {
+    const lines = [possible(210000, 'Portátil')];
+    expect(cushion(lines, 200000).covered).toBe(false);
+    expect(cushion(lines, 210000).covered).toBe(true);
+    expect(cushion(lines, 105000).percent).toBeCloseTo(50, 6);
+  });
+
+  it('is the only place the target comes from — nothing stores one', () => {
+    const d = derive(
+      scenario([possible(840000, 'Fondo')], { savingsCents: 0 }),
+      SETTINGS,
+      MUEBLES,
+      TODAY,
+    );
+    expect(d.cushion.targetCents).toBe(840000);
+    if (d.sixth.kind === 'buffer') expect(d.sixth.targetCents).toBe(840000);
+  });
+});
+
+describe('the waterfall', () => {
+  it('subtracts in the order the money goes, and lands on the balance', () => {
+    const totals = monthlyTotals([
+      priced(157000, { direction: 'entrada', category: 'ingresos' }),
+      priced(105300, { kind: 'fijo' }),
+      priced(29000, { kind: 'esporadico' }),
+    ]);
+    const w = waterfall(withLogged(totals, 4900), 4900);
+    expect(w.disponibleCents).toBe(157000 - 105300 - 4900);
+    expect(w.margenCents).toBe(157000 - 105300 - 4900 - 29000);
+    // The long way round has to reach the same number as the short way.
+    expect(w.margenCents).toBe(withLogged(totals, 4900).balanceCents);
+  });
+
+  it('separates cannot-pay-the-rent from cannot-also-buy-clothes', () => {
+    const broke = waterfall(
+      monthlyTotals([
+        priced(50000, { direction: 'entrada', category: 'ingresos' }),
+        priced(65000, { kind: 'fijo' }),
+      ]),
+      0,
+    );
+    const tight = waterfall(
+      monthlyTotals([
+        priced(70000, { direction: 'entrada', category: 'ingresos' }),
+        priced(65000, { kind: 'fijo' }),
+        priced(20000, { kind: 'esporadico' }),
+      ]),
+      0,
+    );
+    // Both are negative overall, and only one of them is an emergency.
+    expect(broke.disponibleCents).toBeLessThan(0);
+    expect(tight.disponibleCents).toBeGreaterThan(0);
+    expect(tight.margenCents).toBeLessThan(0);
   });
 });
 

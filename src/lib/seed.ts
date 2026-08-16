@@ -175,6 +175,11 @@ function toEntry(spec: SeedSpec, copy: Record<string, { label: string; note?: st
     frequency: spec.frequency,
     priority: spec.priority,
     status: spec.status,
+    // The checklist is a list of costs you *will* have, so every row is fijo.
+    // Nothing in it is a possibility: the things that might happen are yours to
+    // write in the colchón, and a shipped guess at your catastrophes would be
+    // the same overreach as shipping prices.
+    kind: 'fijo',
     // Blank, not zero: a zero is a claim, a dash is an admission.
     amountCents: 0,
     hasAmount: false,

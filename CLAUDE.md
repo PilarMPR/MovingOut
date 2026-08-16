@@ -12,6 +12,10 @@ Context that shapes the numbers: the user is currently a **student with no stead
 
 UI strings are **Spanish**; code, comments and docs are **English**. See [Language](#language).
 
+> **Read this before acting on anything below — 2026-08-16: this branch is an archive.** The first attempt is kept whole and is no longer worked on; `main` and `deprecated` point at the same commit, and `backup/blank-slate` holds the replan (`Start over from a blank slate`). `README.md` says the same thing at its top. Everything below describes the archived app, which built and ran — it is a record, not a plan. **The [Next step](#next-step) list is frozen with it**: do not start executing it here. If the task is to continue the product, ask which branch first. If the task is to read, copy or revive part of the first attempt, this is the branch that has it, and `docs/DEVLOG.md` is the part worth carrying forward.
+>
+> The archive is **whole**: the `kind` / colchón feature — `CHANGELOG.md`'s `Unreleased` section — was still only in the working tree when the branch was frozen, and was committed on 2026-08-16 so that a checkout could not lose it. It is the last thing that happened here, it was never deployed, and `Unreleased` is the right name for it.
+
 > **Status — 2026-08-11: built, and re-skinned to the `Independencia` design.** All eleven steps of the build order in `DESIGN-SYSTEM.md` §8 landed on 2026-08-09: tokens, types, `lib`, storage, `i18n`, the component sheet, all seven screens, the mobile fork, and the PWA.
 >
 > Step 12 — the re-skin to the Claude Design project *Moving out finances app* (`Independencia.dc.html`) — landed on 2026-08-11: a new palette and type stack, a `Sistema` tab, and layout changes to Resumen, Costes, Muebles, Historial and Comparar. **`npm install` is required after pulling**: the mono and body faces changed packages. `tsc` clean, 85 tests over `src/lib` green, production build succeeds.
@@ -21,6 +25,8 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 > **2026-08-15: the categories and rooms became the user's, and a new scenario starts blank.** Both lists are editable in Ajustes; the seeded checklist is now a button rather than a default. Storage schema **v3**, read-compatible with v2. See [Taxonomy](#taxonomy--the-categories-and-rooms-are-the-users) below — it holds rules that are easy to undo by accident.
 >
 > **Also 2026-08-15: a second starting point, the `Presupuesto mensual · Madrid` template** (`src/lib/template.ts`). The user's own spreadsheet as a scenario, and the *only* module in the repo that carries amounts — read its header before editing it, because that exception has a reason and three of its modelling choices are load-bearing.
+>
+> **2026-08-16: money now has a *certainty* axis — `Entry.kind`, and a colchón section in Costes.** Every row is `fijo` (committed), `esporadico` (real but yours to choose) or `critico` (**a possibility, not an expense** — in no total anywhere, and the sum of them *is* the colchón target, which is no longer stored). Resumen gained a waterfall: `entradas − fijos − compra registrada = disponible − esporádicos = margen`. Storage schema **v5**, read-compatible with v4 — a stored target becomes the first line of the cushion. See [Kind](#kind--how-certain-the-money-is).
 >
 > **2026-08-16: there is now a shopping log — a `Compras` tab, and the app's only record of money already spent.** One line per product bought, averaged per day, scaled to a month and added to salidas. Storage schema **v4**, read-compatible with v3. This reverses a "never" that was written in three places here; the argument behind that never is intact and is what shapes the feature. See [The shopping log](#the-shopping-log--the-only-record-of-money-already-spent).
 
@@ -32,13 +38,33 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 npm install
 npm run dev          # Vite dev server
 npm run build        # production build
-npm run test         # Vitest, src/lib only
+npm run preview      # serve the built output
+npm run test         # Vitest, src/lib only — the whole suite
+npm run test:watch   # the same, watching
 
 npm run desktop      # build + launch the Electron shell
 npm run desktop:dist # package release/ — .tar.gz and linux-unpacked/
 npm run android      # build + cap sync android
 npm run android:apk  # debug APK via Gradle
 ```
+
+**Run one file or one case rather than the suite** — there is no npm script for it, so go through `vitest` directly:
+
+```bash
+npx vitest run src/lib/derive.test.ts             # one file
+npx vitest run -t 'colchón'                       # one case, by substring of its name
+npx vitest run src/lib/derive.test.ts -t 'colchón' # both, when a name repeats across files
+```
+
+`derive.test.ts` is the big one and the one most changes touch, because every figure in the app comes out of `derive()`.
+
+**`BASE_PATH` is what makes a subdirectory deploy work**, and it is set at build time, not serve time:
+
+```bash
+BASE_PATH=/MovingOut/ npm run build
+```
+
+Without it the built `index.html` asks for `/assets/…` and a GitHub Pages project site serves nothing, with no error that names the cause. The desktop and Android shells serve from the root of their own origin and do not want it.
 
 **There is deliberately no AppImage.** It was built for a while and it never ran here: it needs `libfuse.so.2`, this machine has FUSE 3, and the compat package needs sudo. Leaving it in `release/` meant the most double-clickable file was the one that could not work, which cost an afternoon of "the desktop app won't open" when the desktop app was fine. `tar.gz` unpacks and runs anywhere with no FUSE. Artifact versions come from `package.json` — bump it and `android/app/build.gradle` together.
 
@@ -87,6 +113,7 @@ Entry {
   frequency        // 'mensual' | 'bimestral' | 'trimestral' | 'anual' | 'unico'
   priority         // 'esencial' | 'deseable'
   status           // 'activo' | 'pausado' | 'pendiente' | 'pagado'
+  kind             // 'fijo' | 'esporadico' | 'critico' — how certain the money is
   amountCents      // integer, ALWAYS POSITIVE
   hasAmount        // false means blank — which is NOT zero
   history[]        // append-only [{ date, amountCents, note? }]
@@ -105,7 +132,25 @@ Entry {
 
 **Frequency.** Stored as the *real* frequency and normalised only when totalling. Water and gas are commonly billed **bimonthly** in Spain, and insurance annually; a budget that assumes everything is monthly is wrong before you start. See `IND004`.
 
-**Status** is what makes the table live rather than a snapshot: `pausado` keeps a row without counting it, `pendiente` / `pagado` track one-offs you have not bought yet.
+**Status** is what makes the table live rather than a snapshot: `pausado` keeps a row without counting it, `pendiente` / `pagado` track one-offs you have not bought yet. Since `kind` exists, `pausado` means **only** "switched off" — it is no longer how a hypothetical row stays out of the totals.
+
+### Kind — how certain the money is
+
+The axis that decides which total a row lands in, and the only field that can take it out of every total.
+
+| | means | where it lands |
+|---|---|---|
+| `fijo` | committed — it leaves whether you agree or not | above `disponible`. What a bad month threatens |
+| `esporadico` | real, irregular, yours to choose | below `disponible`. Usually a yearly spend ÷ 12 |
+| `critico` | **a possibility, not an expense** | no total at all. Its sum *is* the colchón target |
+
+**A `critico` row is in nothing.** Not `monthlyOut`, not the balance, not `upfrontCash`, not the breakdown, not the Costes grid — it lives in the **colchón section** at the foot of Costes, and `derived.costes` excludes it. The template's five contingencies used to arrive `pausado` for this reason, and paused was the wrong tool: switched off and never real are different states, and only one of them should survive a change of mind about whether the row counts.
+
+**The colchón target is derived, never stored.** `cushion().targetCents` is the sum of the `critico` rows, so the target and the list of what it covers cannot disagree. `Scenario.buffer` no longer exists; a v4 payload's stored target is read as a single possibility carrying that amount, so nothing is lost and the figure lands where it can finally say what it is *for*.
+
+**Deliberately not `priority`.** "I need this to live" and "I owe this on the 1st" are different questions — the gym is `deseable` and still leaves the account every month — and `priority` already carries the move-in minimum in Muebles, so overloading it would move two unrelated figures with one edit.
+
+**The waterfall** is what the split buys: `entradas − fijos − compra registrada = disponible`, then `− esporádicos = margen`. A negative `disponible` and a negative `margen` are different emergencies, and the app used to print one number for both.
 
 ### Taxonomy — the categories and rooms are the user's
 
@@ -151,7 +196,7 @@ The four rules that decide what the log means, all in `src/lib/purchases.ts` and
 
 - **FurnitureItem** — an `Entry` with `room` set and `status` used as `pendiente` / `pagado`. Grouped by room, filterable to `esencial` only, which gives the true minimum to move in.
 - **PurchaseProject** — a named multi-item goal (`"Amueblar salón"`) with its own budget and target date. Entries join via `projectId`.
-- **Buffer** — the emergency reserve **target**, and only that. The contributions that build it — the reserve itself and the appliance sinking fund — are ordinary **monthly** `Entry` rows in `otros`, not fields, because that is how you actually build a buffer *and* because it keeps totalling on one code path. See `docs/DEVLOG.md` for why the two contribution fields were dropped from the type.
+- **Colchón** — the emergency reserve. There is **no `Buffer` type any more**: the target is `sum(critico rows)`, derived on every read. The contributions that build it are ordinary **monthly** `Entry` rows tagged `fijo` or `esporadico` according to how disciplined you actually are, not fields, because that keeps totalling on one code path. See `docs/DEVLOG.md` for why the two contribution fields were dropped, and then the target field after them.
 
 ### Derived figures
 
@@ -163,6 +208,8 @@ All of them come out of `derive(scenario, settings, furnitureLabel, todayDate)`.
 |---|---|
 | `monthlyIn` / `monthlyOut` | Frequency-normalised totals per direction, **plus the shopping log's monthly equivalent on the salidas side** |
 | `balance` | `monthlyIn - monthlyOut` — the number the whole app exists to show |
+| `waterfall` | The same number reached the long way: `in − fijos − log = disponible − esporádicos = margen` |
+| `cushion` | The possibilities, and the target they sum to. **The only source of a colchón target** |
 | `upfrontCash` | Everything due before you sleep there, fianza included |
 | `actualSpend` | `upfrontCash` minus refundables — what you never see again |
 | `runwayMonths` | Savings after upfront costs ÷ monthly deficit |
@@ -212,6 +259,7 @@ The notes that stop a plausible-looking calculation being quietly wrong:
 - **Runway only means something when the balance is negative.** When it is positive, report time-to-goal instead; an "∞ months" runway is a bug in the framing, not a result.
 - **Max affordable rent is a rule of thumb** (~30–35% of income), shown to the user as a visible guideline with its assumption stated. It is never a gate that blocks input.
 - **The first big shop is not a weekly shop.** Stocking an empty kitchen is a one-off event of its own; folding it into `alimentacion` blows month one silently. See [`docs/COST-CHECKLIST.md`](docs/COST-CHECKLIST.md).
+- **A possibility is in no total, and there are four places to forget it.** `countsMonthly`, `countsUpfront`, `breakdown` and `derived.costes` each exclude `critico` separately, and the one that gets forgotten is the one that announces that moving out costs 8.400 € on day one. This is **not** in the invariant table because it has no static check — it is held by tests in `derive.test.ts`, and a fifth total added later needs its own line there.
 - **The weekly shop can be counted twice.** A `Compra semanal` estimate in Costes and the same food logged in Compras both enter `monthlyOut`, because the log adds and never reconciles. `overlaps()` is what makes that visible instead of silent, and anything that narrows it — a filter, a status, a category check — is quietly narrowing the only thing standing between the user and a total that is wrong by a weekly shop.
 
 ## UI shape — the Command Center skin
@@ -259,9 +307,11 @@ They never overlap. A category never gets a colour of its own — breakdown bars
 - **`src/lib/` is a pure calculation layer** — plain functions over plain data. No React, no storage, no DOM, **and no clock**: anything that depends on what day it is takes `todayDate` as a parameter (`derive`, `projectProgress`, everything in `purchases.ts`), which is also the only reason those figures are testable at all.
 - **`src/lib/storage.ts` is the only module that touches `localStorage`** (`IND006`). The saved payload carries a schema `version`, and shape changes are handled by **read-time backfill**, not migrations. JSON export/import goes through the same module.
 - **`src/types.ts`** — the single source of truth for the model above.
+- **`src/lib/naming.ts`** — `uniqueName(taken, base)`: `base` if it is free, else `base 2`, `base 3`. Anything created from a fixed default label goes through it — scenarios, categories, rooms, scenario copies — because of a real failure: `Nuevo escenario` made a *second* scenario named exactly like the first, the header picker shows names rather than ids, and so the button appeared to do nothing over two identical screens. A blank scenario made it total, since the seeded checklist appearing had been the only feedback that anything happened. Names are compared trimmed: `" Piso"` and `"Piso"` are the same name to the only judge that matters, which is a reader.
 - **`src/i18n/es.ts`** — every Spanish string, plus `plural()`. No Spanish literals in components (`IND008`).
 - **`src/state/store.ts`** — the `useStore` hook: the one piece of mutable state, and the only caller of `storage`. Not in `lib/`, because `lib/` does not know React exists. Tabs receive it as a prop; there is no context.
 - **`src/components/`** is the twelve-component sheet from `DESIGN-SYSTEM.md` §4; **`src/tabs/`** is one file per screen, assembled from those and reaching past them for nothing. `src/tabs/Sistema.tsx` renders that sheet against the live tokens, which is what stops it drifting from what ships.
+- **Two screens fork on mobile** — `CostesMobile` and `ComprasMobile`, chosen in `App.tsx` at 820 px. They are different components over the same data, never a reflowed table, and `src/lib/` does not know which is mounted. Costes forks because its grid is 1080 px wide; Compras forks because it is the screen used *standing in a shop*. Both render `bare`, without the padded page body.
 
 - **`electron/` and `android/` are shells, not forks.** Neither contains app logic, and neither is allowed to: they exist to host `dist/`. Both are careful to serve it from a **real origin** — `app://movingout` on the desktop, `https://localhost` on Android — because `localStorage` is keyed to an origin and a `file://` page's origin is opaque. Loading `dist/index.html` directly would render fine and lose data. See `docs/DEVLOG.md`.
 
@@ -332,6 +382,8 @@ Note the collision: `CHANGELOG.md` tracks **code**; the app's Historial tab trac
 English for `CLAUDE.md`, `.claude/`, `docs/`, `CHANGELOG.md`, code identifiers, comments and commit subjects. **Spanish stays for UI strings and user-facing text**, centralised in `src/i18n/es.ts`. Domain terms that have no clean English equivalent — *fianza*, *empadronamiento*, *autónomo*, *comunidad* — keep their Spanish names in code and docs, because translating them loses the meaning. Invariant IDs are never translated.
 
 ### Next step
+
+> **Frozen — this list was the plan when the branch was archived on 2026-08-16, and it is not the plan now.** See the archive note at the top. Read it as a record of what the first attempt thought it still owed; do not pick an item off it and start.
 
 The build order is done and the re-skin has landed, type-checked, tested and built. What is left is the part only real use can drive:
 

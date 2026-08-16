@@ -9,6 +9,7 @@ import type {
   DefaultCategoryId,
   DefaultRoomId,
   Direction,
+  EntryKind,
   Frequency,
   Priority,
   Situacion,
@@ -82,6 +83,23 @@ export const es = {
     mobiliario: 'Mobiliario',
     otros: 'Otros',
   } satisfies Record<DefaultCategoryId, string>,
+
+  /**
+   * How certain the money is. `crítico` keeps the user's own word for it; the
+   * copy around it is what says the thing that matters — that it has not
+   * happened, and may never.
+   */
+  kind: {
+    fijo: 'Fijo',
+    esporadico: 'Esporádico',
+    critico: 'Crítico',
+  } satisfies Record<EntryKind, string>,
+
+  kindHint: {
+    fijo: 'Se paga sí o sí',
+    esporadico: 'Real, pero irregular y decides tú',
+    critico: 'Podría pasar — no es un gasto todavía',
+  } satisfies Record<EntryKind, string>,
 
   frequency: {
     mensual: 'Mensual',
@@ -160,7 +178,7 @@ export const es = {
     bufferCovered: 'Cubierto',
     bufferShort: 'A medias',
     bufferNoTarget: 'Sin objetivo',
-    bufferNoTargetSub: 'ponle un objetivo en Ajustes y aquí verás si llegas',
+    bufferNoTargetSub: 'apunta en Costes lo que podría pasar y el objetivo sale solo',
     bufferSubPrefix: 'objetivo',
     bufferSubMiddle: '· te quedan',
     bufferSubSuffix: 'tras entrar',
@@ -168,6 +186,30 @@ export const es = {
     guideWhyMiddle: 'sobre',
     guideWhySuffix: 'Es una referencia, no un límite.',
     guideNoIncome: 'Sin entradas registradas no hay referencia que dar.',
+    /**
+     * The waterfall — the balance in the order the money actually goes. Two
+     * subtotals, and `disponible` is the one the app was missing.
+     */
+    wPanel: 'Cómo se reparte el mes',
+    wIn: 'Entradas',
+    wFijos: 'Gastos fijos',
+    wLogged: 'Compra registrada',
+    wDisponible: 'Disponible',
+    wEsporadicos: 'Gastos esporádicos',
+    wMargen: 'Margen',
+    wFijosSub: 'se pagan sí o sí',
+    wLoggedSub: 'gasto real, no estimación',
+    wDisponibleSub: 'lo que queda para repartir',
+    wEsporadicosSub: 'irregulares, y decides tú',
+    wMargenSub: 'lo que sobra al final',
+    wNoteOk:
+      'Los gastos fijos ya están cubiertos. Lo esporádico sale de lo que queda, así que un mes malo se recorta ahí y no en el alquiler.',
+    wNoteTight:
+      'Lo esporádico se lleva casi todo lo disponible: cubres lo fijo, pero no queda margen detrás.',
+    wNoteBad:
+      'No llegas ni a los gastos fijos. Esto no se arregla recortando caprichos — la diferencia está en el alquiler, los suministros o las entradas.',
+    wNoteEmpty: 'Rellena Costes y aquí se ve en qué orden se va el dinero.',
+
     barsPanel: 'A dónde va el dinero',
     barsPaused: 'pausado',
     /** The shopping log inside the bars: same axis, different kind of number. */
@@ -230,6 +272,7 @@ export const es = {
     filterNoAmount: 'Sin importe',
     colConcept: 'Concepto',
     colType: 'Tipo',
+    colKind: 'Clase',
     colCategory: 'Categoría',
     colFrequency: 'Frecuencia',
     colPriority: 'Prioridad',
@@ -265,6 +308,43 @@ export const es = {
     /** A blank scenario is the normal starting state, so it reads as an invitation. */
     emptyScenario: 'Escenario en blanco. Añade el primer concepto abajo, o carga la checklist desde Ajustes.',
     filters: 'Filtros',
+  },
+
+  /**
+   * The colchón — the possibilities, and the target they add up to. Its whole
+   * job is to be read as a list of things that have *not* happened, so the copy
+   * never calls a line a gasto.
+   */
+  colchon: {
+    panel: 'Colchón · lo que podría pasar',
+    note: 'No cuentan en ningún total',
+    intro:
+      'Esto no son gastos: son cosas que podrían pasar y lo que costaría cubrirlas. No entran en las salidas del mes, ni en el balance, ni en el dinero que necesitas al entrar. Lo único que hacen es decir de qué tamaño tiene que ser el colchón.',
+    colConcept: 'Podría pasar',
+    colAmount: 'Costaría',
+    colNote: 'Nota',
+    add: '+ Añadir posibilidad',
+    newLabel: 'Posible imprevisto',
+    delete: 'Borrar posibilidad',
+    empty: '— —',
+    emptyList:
+      'Todavía no has apuntado ninguna posibilidad. Lo que pongas aquí es lo que suma el objetivo del colchón: el portátil, la nevera, tres meses sin trabajo.',
+    target: 'Objetivo del colchón',
+    targetNote: 'la suma de esta lista — no se escribe a mano',
+    missing: 'sin importe — el objetivo puede subir',
+    missingOne: 'sin importe — el objetivo puede subir',
+    saved: 'Ahorro tras entrar',
+    covered: '✓ Cubierto',
+    short: 'A medias',
+    coveredNote: 'El ahorro que te queda después de entrar ya cubre todo lo que has apuntado.',
+    shortPrefix: 'Te faltan',
+    shortSuffix: 'para cubrir lo que has apuntado.',
+    noTargetNote:
+      'Sin nada apuntado no hay objetivo que comprobar, y el colchón no puede estar cubierto ni sin cubrir.',
+
+    /** The v4 → v5 read: a typed target becomes the first line of the list. */
+    legacyLabel: 'Objetivo de colchón',
+    legacyNote: 'venía del objetivo que tenías puesto a mano — desglósalo en lo que quieras cubrir',
   },
 
   /**
@@ -328,6 +408,11 @@ export const es = {
     overlapButton: 'Pausar las estimaciones',
     overlapButtonNote:
       'Pausar no borra: el concepto se queda a la vista, deja de contar, y vuelve a contar cuando lo reactives.',
+
+    /** The phone fork: the same figures, in the room a phone has. */
+    mDay: 'día',
+    mDays: 'días',
+    mProvisional: 'provisional',
 
     note: 'Esto sí es un registro de gastos, y es el único de la app. La media diaria de todo lo apuntado se escala a un mes y se suma a las salidas; no sustituye a ninguna estimación.',
     noteShort: 'Gasto real, no estimación',
@@ -432,9 +517,9 @@ export const es = {
     situacion: 'Situación',
     savings: 'Ahorro disponible',
     savingsHint: 'Lo que tienes hoy, antes de entrar. De aquí sale el margen y el colchón.',
-    bufferTarget: 'Objetivo de colchón',
-    bufferHint:
-      'La reserva que quieres tener detrás. Lo que aportas cada mes es un concepto más en Costes, no un campo aparte.',
+    bufferMoved: 'Objetivo de colchón',
+    bufferMovedHint:
+      'Ya no se escribe aquí. El objetivo es la suma de lo que apuntas en el colchón, al final de Costes: cada posibilidad que añadas lo sube, así que la cifra y lo que cubre no pueden separarse. Lo que aportas cada mes sigue siendo un concepto más.',
     maxRent: 'Regla de alquiler máximo',
     maxRentHint:
       'El único número constante de la app, y por eso se edita aquí. Se muestra como orientación en Resumen; nunca bloquea nada.',

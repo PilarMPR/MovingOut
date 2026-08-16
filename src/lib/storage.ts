@@ -9,10 +9,10 @@
  * failure looks like data loss rather than a missing field.
  */
 import type {
-  Buffer,
   Cents,
   Direction,
   Entry,
+  EntryKind,
   Frequency,
   IsoDate,
   Priority,
@@ -28,6 +28,7 @@ import type {
 } from '../types';
 import {
   DIRECTIONS,
+  ENTRY_KINDS,
   FALLBACK_CATEGORY,
   FALLBACK_ROOM,
   FREQUENCIES,
@@ -43,11 +44,13 @@ import { today } from './history';
 const KEY = 'movingout.state';
 /**
  * v3 added the editable `categories` / `rooms` lists and stopped seeding
- * scenarios; v4 added the shopping log, `Scenario.purchases`. Both read
- * anything older: a payload with no `purchases` key opens with an empty log,
- * which is exactly what it meant.
+ * scenarios; v4 added the shopping log, `Scenario.purchases`; v5 added
+ * `Entry.kind` and turned the colchón target from a stored field into the sum
+ * of the `critico` rows. Every one of them reads anything older — an absent
+ * `purchases` means an empty log, an absent `kind` means `fijo`, which is what
+ * every row written before the field existed actually was.
  */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /** ~a third of income is the usual rule of thumb; it is editable in Ajustes. */
 const DEFAULT_MAX_RENT_PERCENT = 32;
@@ -70,7 +73,6 @@ export function newScenario(name: string): Scenario {
     situacion: 'estudiante',
     createdAt: today(),
     savingsCents: 0,
-    buffer: { targetCents: 0 },
     entries: [],
     projects: [],
     purchases: [],
@@ -211,6 +213,10 @@ function ensureEntry(raw: unknown, createdAt: IsoDate, known: KnownIds): Entry {
     frequency: oneOf<Frequency>(r.frequency, FREQUENCIES, 'mensual'),
     priority: oneOf<Priority>(r.priority, PRIORITIES, 'deseable'),
     status: oneOf<Status>(r.status, STATUSES, 'activo'),
+    // Pre-v5 rows have no kind, and `fijo` is what every one of them was: they
+    // were all in the monthly total, which is precisely what fijo means. The
+    // default is the only one that leaves an existing budget's figures alone.
+    kind: oneOf<EntryKind>(r.kind, ENTRY_KINDS, 'fijo'),
     amountCents,
     // v1 had no `hasAmount`: a saved amount above zero is a real estimate,
     // and a saved zero from that build was genuinely "not filled in yet".
@@ -266,22 +272,58 @@ function ensureProject(raw: unknown, createdAt: IsoDate): PurchaseProject {
   return project;
 }
 
-function ensureBuffer(raw: unknown): Buffer {
-  const r = isRecord(raw) ? raw : {};
-  return { targetCents: cents(r.targetCents, 0) };
+/**
+ * The colchón target used to be a stored number, `Scenario.buffer.targetCents`,
+ * and is now the sum of the `critico` rows (types.ts). A payload that still
+ * carries one would open with its target silently gone — so the figure is
+ * materialised as a single possibility holding the whole amount. The target
+ * survives to the cent, and it lands in the one place that can now say what it
+ * is *for*, which is the thing the old field could never answer.
+ *
+ * Only when the scenario has no possibilities of its own: once there is a list,
+ * its sum is the target and a stored number is a stale duplicate of it.
+ */
+function legacyCushionEntry(raw: unknown, entries: Entry[], createdAt: IsoDate): Entry | null {
+  if (entries.some((entry) => entry.kind === 'critico')) return null;
+  const buffer = isRecord(raw) ? raw : {};
+  const targetCents = cents(buffer.targetCents, 0);
+  if (targetCents === 0) return null;
+  return {
+    id: newId('e'),
+    label: es.colchon.legacyLabel,
+    direction: 'salida',
+    category: FALLBACK_CATEGORY,
+    // `unico` and `activo`: a possibility is a one-off that has not happened.
+    // It needs no `pausado` to stay out of the totals — `critico` does that,
+    // and it does it because of what the row is rather than by switching it off.
+    frequency: 'unico',
+    priority: 'esencial',
+    status: 'activo',
+    kind: 'critico',
+    amountCents: targetCents,
+    hasAmount: true,
+    // The figure it arrives with is its original estimate, so it is also its
+    // first revision — or the first edit would be logged as the original and
+    // the drift against it lost (IND002).
+    history: [{ date: createdAt, amountCents: targetCents }],
+    note: es.colchon.legacyNote,
+  };
 }
 
 function ensureScenario(raw: unknown, known: KnownIds): Scenario {
   const r = isRecord(raw) ? raw : {};
   const createdAt = date(r.createdAt, today());
+  const entries = list(r.entries).map((entry) => ensureEntry(entry, createdAt, known));
+  const legacy = legacyCushionEntry(r.buffer, entries, createdAt);
+  if (legacy !== null) entries.push(legacy);
+
   const scenario: Scenario = {
     id: str(r.id, newId('s')),
     name: str(r.name, es.scenario.firstName),
     situacion: oneOf<Situacion>(r.situacion, SITUACIONES, 'estudiante'),
     createdAt,
     savingsCents: cents(r.savingsCents, 0),
-    buffer: ensureBuffer(r.buffer),
-    entries: list(r.entries).map((entry) => ensureEntry(entry, createdAt, known)),
+    entries,
     projects: list(r.projects).map((project) => ensureProject(project, createdAt)),
     purchases: list(r.purchases).map((purchase) => ensurePurchase(purchase, createdAt, known)),
   };

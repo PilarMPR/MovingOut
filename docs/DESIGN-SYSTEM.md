@@ -153,7 +153,7 @@ Twelve components carry every screen. They live in `src/components/`, and **no t
 
 ## 5. Screens
 
-Tabs: **Resumen · Costes · Compras · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema** (§5.9), which sits apart on the right of the tab row because it is not a product screen.
+Tabs: **Resumen · Costes · Compras · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema** (§5.10), which sits apart on the right of the tab row because it is not a product screen.
 
 The tab row lives in the ink header, under the identity bar. The active tab is filled with `--bg` and squared into the page — a notch cut out of the header, not an underline. **The verdict pill rides in the identity bar**, to the right: it is true on every tab, so it should not be something you navigate back to Resumen to read.
 
@@ -175,6 +175,21 @@ The grid is **five columns wide over two rows**, and it is exactly full: `BALANC
 
 The **max-rent guideline** is now KPI 7 rather than an amber strip, rendered in `--quiet` — the least loud number on the screen — with its assumption on the sub-line (*"Regla del 32 % sobre 730 €/mes · Es una referencia, no un límite."*). It never touches an input, never blocks a save, and is never red. **Making it a KPI does not make it a result**; the tone is what says so.
 
+The **waterfall panel** sits between the KPI grid and the split below it, and it is the only place in the app that shows the balance as arithmetic rather than as a result:
+
+```
+ENTRADAS                    1.570,00 €
+Gastos fijos                 −780,00 €   se pagan sí o sí
+Compra registrada             −92,40 €   gasto real, no estimación
+────────────────────────────────────────
+DISPONIBLE                    697,60 €   lo que queda para repartir
+Gastos esporádicos            −30,00 €   irregulares, y decides tú
+────────────────────────────────────────
+MARGEN                        667,60 €
+```
+
+Only the two subtotals get a rule above them and the display face; the rest is mono, at body size. **`DISPONIBLE` is the reason the panel exists** — a negative one means you cannot cover the rent, a negative `MARGEN` means you cannot also cover the extras, and those are different emergencies that used to share a single red number. Both subtotals go red on their own. The compra-registrada line only appears when there is a log, because an empty log is not a zero anyone should read past to reach a subtotal. Possibilities never appear here at all: they are not money that goes anywhere.
+
 The **upfront ledger** separates `dinero al entrar` from `gasto real` as two totals **side by side in their own boxes**, because the gap between them is exactly the fianza. The fianza row carries a blue *Devolvible* pill, and a sentence under the boxes says the deposit is money you need to have, not money you spend. There is no combined "moving costs" figure anywhere in the app.
 
 The **insight line** is a full-width banner tinted by the sign of the answer — green, amber, red, or a neutral wash for `sindatos`. It is the last thing on the screen and it states the answer in one sentence.
@@ -183,7 +198,9 @@ The **insight line** is a full-width banner tinted by the sign of the answer —
 
 One dense editable grid of **nine columns** holding **both** entradas and salidas, filters inside the panel, a totals strip, a dashed add-row.
 
-`CONCEPTO · TIPO · CATEGORÍA · FRECUENCIA · PRIORIDAD · ESTADO · IMPORTE · EQUIV. MENSUAL · NOTA`
+`CONCEPTO · TIPO · CLASE · CATEGORÍA · FRECUENCIA · PRIORIDAD · ESTADO · IMPORTE · EQUIV. MENSUAL · NOTA`
+
+Ten columns since `CLASE` — `Fijo · Esporádico · Crítico` — joined them, and the table's min-width went up with the count rather than the space being taken out of `IMPORTE`, which was already clipping `650,00 €` down to `650` at nine.
 
 - **`CONCEPTO` is sticky.** At 1080 px the grid scrolls horizontally, and a number under the cursor has to keep the name it belongs to.
 - **An `entrada` tints its whole row** (`--in-row`) and carries a green dot before its label. Direction is a *kind* of row, so it colours the row; the amount stays black.
@@ -192,7 +209,18 @@ One dense editable grid of **nine columns** holding **both** entradas and salida
 - **`pausado` stays visible.** Row dims to 50 %, equivalent reads `no cuenta` instead of a number. Removing it would lose the decision.
 - **The totals strip** prints `ENTRADAS · SALIDAS · BALANCE`, all normalised to the month, and says whether it is showing the whole scenario or a filtered subset. The balance takes the **verdict's** colour, not the raw sign — `+8 €` is positive and still not a yes.
 
-### 5.3 Compras
+**Retagging a row `Crítico` makes it leave the grid**, and reappear in the colchón below. That is the honest consequence of saying it has not happened, it is reversible from the same control down there, and it is the one interaction in the app where an edit moves a row between sections.
+
+### 5.3 Colchón — a section of Costes, not a screen
+
+Below the grid, in its own panel: **what could happen, what it would cost, and whether the money is there.** Nothing in it is in any total.
+
+- **The columns are in the conditional** — `PODRÍA PASAR` and `COSTARÍA` — against the grid's `CONCEPTO` and `IMPORTE`. Two different acts of writing deserve two different headings; mixed into one table sorted by amount, a possibility and a bill read identically.
+- **The dot is hollow**, where a concepto's is filled. It takes no semantic hue: a possibility is not good or bad, and colouring it would make it a judgement.
+- **The target is a total row, and it says it is summed** — *"la suma de esta lista — no se escribe a mano"*. There is nowhere to type one, and the Ajustes field that used to hold it is now a read-only figure that says where it went. A field that silently disappears reads as a feature that was removed.
+- The panel's dot is green when the cushion is covered and amber when it is not — the one place the section carries a verdict, because "have I got this behind me" is a yes/no.
+
+### 5.4 Compras
 
 The shopping log, and the only screen about money already spent. It sits after Costes because the two are the same money from opposite ends.
 
@@ -207,27 +235,29 @@ KPI row of four → the double-count warning, when there is one → the editable
 - **`POR PRODUCTO` is the reason the tab exists.** Times bought, total, average, monthly equivalent, share, last bought. Sorted by total, so the answer to "where does the shop actually go" is the first row.
 - **The date is a native `<input type="date">`** and renders in the browser's locale, which can put `08/15/2026` next to the app's own `dd/mm/yyyy` elsewhere. Kept anyway: on a phone, a native date picker beats a correctly-formatted text field.
 
-### 5.4 Muebles
+### 5.5 Muebles
 
 A **hero card** carries the one figure this tab exists for — `MÍNIMO REAL PARA ENTRAR A VIVIR` — with the **"sólo esenciales"** pill toggle beside it, because the minimum is only a minimum while that filter is on. Three secondary KPIs follow (whole list, already bought, no price yet): the minimum is only as true as its coverage.
 
 Then **one panel per room**, each with a 3 px progress strip flush under its header showing how much of that room is already bought, and an editable row per article.
 
-### 5.5 Proyectos
+### 5.6 Proyectos
 
 Card per project, **two bars**: spend against budget, and elapsed against target date. The relationship between them is the readout — money bar ahead of time bar means overspending; behind means stalled.
 
-### 5.6 Historial
+### 5.7 Historial
 
-Scenario **drift** is the tab's headline, not one KPI among four: a full-width banner tinted by the sign of the answer, with the figure in the display face and a sentence naming what it means. Three KPIs follow, then one log across every item, newest first — change vs previous, change vs original, % delta. This is a changelog of **estimates** and it must never grow into a transactions feed, which is what the panel's `ESTIMACIONES, NO GASTOS` tag keeps saying. Spending has its own screen now (§5.3), and the tag names what this one *is* rather than what it is not, because "no es un registro de gastos" stopped being true of the app.
+Scenario **drift** is the tab's headline, not one KPI among four: a full-width banner tinted by the sign of the answer, with the figure in the display face and a sentence naming what it means. Three KPIs follow, then one log across every item, newest first — change vs previous, change vs original, % delta. This is a changelog of **estimates** and it must never grow into a transactions feed, which is what the panel's `ESTIMACIONES, NO GASTOS` tag keeps saying. Spending has its own screen now (§5.4), and the tag names what this one *is* rather than what it is not, because "no es un registro de gastos" stopped being true of the app.
 
 Drift is `null` until something has actually been revised. The banner takes the neutral wash in that case and says so — a drift of zero would claim the question has been asked and answered.
 
-### 5.7 Ajustes
+### 5.8 Ajustes
 
-Savings, buffer target, appliance fund contribution, the max-rent guideline percentage (**the only constant in the app, and it lives here as an editable field with its assumption printed beside it**), JSON export / import.
+Savings, the max-rent guideline percentage (**the only constant in the app, and it lives here as an editable field with its assumption printed beside it**), the two editable taxonomies, the two starting points, JSON export / import.
 
-### 5.8 Comparar
+**The colchón target is here as a read-only figure**, in a field-shaped box with a dashed border and *"la suma de esta lista"* beside it. It used to be typed here and is now summed from §5.3 — and it keeps the slot precisely because a field that silently disappears reads as a feature that was removed.
+
+### 5.9 Comparar
 
 A **grid**, a column per scenario over a shared row set, with name · situación · verdict pill across the top. Each cell is a value *and its distance from the scenario you are standing in*, so the screen answers "how much worse is this one" without arithmetic.
 
@@ -235,7 +265,7 @@ A **grid**, a column per scenario over a shared row set, with name · situación
 - **The delta is coloured by outcome, not by sign.** Lower salidas is green, lower entradas is red. `FIANZA (DEVOLVIBLE)` is deliberately neutral: a bigger deposit is more cash to find and none of it is lost, so neither direction is better.
 - **Rows where every scenario agrees collapse into one muted line** (*"12 conceptos idénticos — mostrar"*). Only the differences stay open, so three flats fit on one screen.
 
-### 5.9 Sistema
+### 5.10 Sistema
 
 The component sheet — §2's swatches, §3's three type roles, §4's components — **rendered against the live tokens**. A swatch here is `var(--accent)`, not a hex copied out of this document, which is the whole reason it is a tab and not a picture: it cannot quietly disagree with what ships.
 
@@ -254,7 +284,17 @@ Horizontal scroll with a frozen `concepto` column was the obvious answer and it 
 - **Status becomes a 3 px left edge.** A coloured select costs a whole column on a phone; the stripe reads at arm's length, and the select reappears inside the opened card.
 - **Totals become a sticky footer card** in `--sunk`, directly above the add-row. The whole reason for editing a number on a phone is watching that figure move.
 
-**Costes is the only forked screen, and Compras (§5.3) is the one most likely to need the same treatment next.** Its table scrolls horizontally inside `.tblwrap` like Historial's and Muebles' do, which is fine for a screen you read occasionally — but the shopping log is the one thing here that gets used *standing in a shop*, on a phone, several times a week, and its most important column (`IMPORTE`) is the second from the right. The eight-item bottom nav does fit at 390 px; the table is the part to watch. Fork it the day logging a purchase on a phone feels like work.
+### Compras is the second fork, and the one the rule was written for
+
+Costes was forked because the grid is 1080 px wide. **Compras is forked because of *when* it is used**: it is the one screen touched standing in a shop, several times a week, and on the desktop grid its most important column — `IMPORTE` — sits second from the right behind a horizontal scroll. Same card grammar, two deliberate differences:
+
+- **Cards group by day, under the `.room` header Muebles already uses**, with that day's total on the right. One shop is four or five lines entered together, and *what did today cost* is a question asked at the till rather than at the end of a month. The desktop table stays flat: a `FECHA` column sorts fine when you can see six rows at once.
+- **The sticky footer carries the monthly equivalent, not the total.** The total is not comparable to anything else in the app; the equivalent is what enters `SALIDAS / MES`. Same rule as Costes' balance footer — the reason to type an amount on a phone is watching that figure move.
+- **No status stripe, because a purchase has no status** — it happened. The 3 px edge is used for the one state worth reporting, a row whose amount has not been typed yet, in `--dash`. That is the same admission the desktop grid makes with `— —`, and it is an absence rather than a judgement, so it gets no hue (§1).
+- **The warning stays above the list**, as on desktop. It is the only thing on the screen that says a figure elsewhere in the app is currently wrong, and it costs a lot of a phone's vertical space — which is correct, and which it stops costing the moment it is resolved.
+- The KPI row does not survive the fork. Its four figures become the footer (monthly equivalent) and one mono line beside the filter chips (total · days · *provisional*).
+
+The eight-item bottom nav fits at 390 px — 47 px a button, no page overflow.
 
 ---
 
@@ -270,7 +310,9 @@ Each trap in [`DESIGN-BRIEF.md` §4](DESIGN-BRIEF.md) has a specific consequence
 | Agency fees are the landlord's | The row **exists**, at `0,00 €`, struck through, with a red *No deberías pagarlo* pill. Omitting it leaves the user to be surprised; budgeting it legitimises it |
 | Electricity is seasonal · promos expire · rent rises | `NOTA` is a wide, always-visible, editable column — not a tooltip, not an icon, not truncated. These notes are what stop a plausible budget being quietly wrong |
 | The empty state is the normal state | Blank amounts render as dashed `— —`, never `0,00 €` — a zero is a claim, a dash is an admission. Every total prints its coverage (*"11 / 14 con importe"*) |
-| The log adds and never reconciles | An amber banner at the top of Compras (§5.3), naming the category and printing *registrado* against *estimado*, plus its short form under Resumen's bars. The only thing standing between the user and a total that counts the weekly shop twice, so it gets the loudest non-red slot on the screen |
+| A possibility is not a cost | Its own section under the Costes grid (§5.3), with headings in the conditional and a hollow dot. In no total anywhere — and the colchón target is the sum of that list, so there is nowhere to type one |
+| Fijo and esporádico are different money | Two subtotals in the waterfall (§5.1), not one balance. `DISPONIBLE` in the red is the rent; `MARGEN` in the red is the extras |
+| The log adds and never reconciles | An amber banner at the top of Compras (§5.4), naming the category and printing *registrado* against *estimado*, plus its short form under Resumen's bars. The only thing standing between the user and a total that counts the weekly shop twice, so it gets the loudest non-red slot on the screen |
 | Nothing is hardcoded | Taxes and charges are ordinary rows with an editable amount and a nota |
 | Income is lumpy | The entradas side is designed to look uncertain: sub-lines and row notes carry the caveats (*"ninguno es fijo"*, *"hasta jun-27, sin renovación segura"*). Rendering 730 € as solidly as a salary would lie about the thing that matters most |
 

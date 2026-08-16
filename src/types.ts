@@ -73,6 +73,37 @@ export type Priority = (typeof PRIORITIES)[number];
 export const STATUSES = ['activo', 'pausado', 'pendiente', 'pagado'] as const;
 export type Status = (typeof STATUSES)[number];
 
+/**
+ * How certain this money is — the axis that decides *which* total a row lands
+ * in, and the only one of the row's fields that can take it out of every total.
+ *
+ *   · `fijo`        committed. It leaves whether or not you agree: rent, the
+ *                   phone bill, the abono. This is what a bad month threatens.
+ *   · `esporadico`  real, but irregular and yours to choose: clothes, gifts,
+ *                   a trip. Usually stored as a monthly average of a yearly
+ *                   spend, which is a provision rather than a bill.
+ *   · `critico`     **a possibility, not an expense.** The laptop dying, three
+ *                   months without work. It has never been paid and may never
+ *                   be. It is in no total anywhere in the app; what it does
+ *                   instead is size the colchón — the sum of these rows *is*
+ *                   the target (see `Scenario`).
+ *
+ * This is why `pausado` means only "switched off" again. The five contingencies
+ * of the Presupuesto template used to arrive paused, because paused was the
+ * only way to keep a row visible and out of the totals — and live they would
+ * have claimed 8.400 € of `upfrontCash` before you could sleep in the flat
+ * (docs/DEVLOG.md, 2026-08-15). A possibility is now excluded because of what
+ * it *is*, so switching it off and it never having been real stop being the
+ * same flag.
+ *
+ * It is deliberately not `priority`. "I need this to live" and "I owe this on
+ * the 1st" are different questions — the gym is deseable and still leaves your
+ * account every month — and `priority` already carries the move-in minimum in
+ * Muebles, so overloading it would move two unrelated figures with one edit.
+ */
+export const ENTRY_KINDS = ['fijo', 'esporadico', 'critico'] as const;
+export type EntryKind = (typeof ENTRY_KINDS)[number];
+
 /** The id of a Taxon in `SavedState.rooms`. Open for the same reason Category is. */
 export type Room = string;
 
@@ -109,6 +140,8 @@ export interface Entry {
   frequency: Frequency;
   priority: Priority;
   status: Status;
+  /** How certain the money is, and what takes a possibility out of every total. */
+  kind: EntryKind;
   /** Always positive. The sign comes from `direction` (IND005). */
   amountCents: Cents;
   /** `null` means "no estimate yet" — which is not the same as zero. */
@@ -182,17 +215,20 @@ export interface PurchaseProject {
 }
 
 /**
- * The emergency reserve you want behind you.
+ * There is no `Buffer` type any more, and this note is here so its absence
+ * reads as a decision rather than an oversight.
  *
- * Only the target lives here. The contributions that build it — the reserve
- * itself and the appliance sinking fund — are ordinary monthly Entries, so
- * they normalise, total, chart and drift like every other line instead of
- * needing a second code path (IND004, IND007). That is the whole point of
- * Entry being the universal unit.
+ * The colchón target used to be a number you typed in Ajustes. It is now the
+ * **sum of the `critico` entries** — derived, never stored — so the target and
+ * the list of things it is supposed to cover can never disagree. Adding
+ * "móvil roto · 400 €" to the cushion raises the target by 400, and there is
+ * no second place to go and keep in step.
+ *
+ * The contributions that *build* the reserve are still ordinary monthly
+ * Entries, tagged `fijo` or `esporadico` according to how disciplined you
+ * actually are about paying yourself. They were never fields, for the same
+ * reason: one code path for anything that recurs (IND004, IND007).
  */
-export interface Buffer {
-  targetCents: Cents;
-}
 
 /** A complete named budget. Scenarios exist side by side and are comparable. */
 export interface Scenario {
@@ -202,7 +238,6 @@ export interface Scenario {
   createdAt: IsoDate;
   /** Savings available today, before moving in. */
   savingsCents: Cents;
-  buffer: Buffer;
   entries: Entry[];
   projects: PurchaseProject[];
   /**
