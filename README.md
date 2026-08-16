@@ -1,22 +1,24 @@
-# MovingOut — archived
+# MovingOut — rework
 
-> **This branch is the archive of the first attempt, kept whole and no longer worked on.**
-> The project is being replanned from scratch as of 2026-08-16, on `backup/blank-slate`
-> — one commit, `Start over from a blank slate`. **`main` has not been reset**: it still
-> holds this archive, and points at the same commit as `deprecated`. Everything below
-> describes the archived app, which built and ran.
+> **This branch is the rework, and it is where the work happens.** It started from the
+> archived first attempt (`main` and `deprecated`, both at `2dbfc10`) and is rebuilding
+> the program bottom-up from a plan: [`docs/REWORK-PLAN.md`](docs/REWORK-PLAN.md). Read
+> that first — it says what is being rewritten, what is carried across with its tests,
+> and in what order.
 >
-> The last feature here is the certainty axis — `Entry.kind`, the colchón section
-> (`src/tabs/Colchon.tsx`), the Resumen waterfall, storage schema v5 — written up as the
-> `Unreleased` section of `CHANGELOG.md`, and `Unreleased` is accurate: it was never
-> deployed anywhere. It sat in the working tree, in no commit, until the archive was
-> sealed on 2026-08-16; the same commit added the Compras shopping log's mobile fork
-> (`src/tabs/ComprasMobile.tsx`), which the shopping-log commit had missed. At that
-> point the tree type-checked, built, and passed 178 tests over `src/lib`.
+> **The archive is not deleted and is not this branch's problem.** `main` and
+> `deprecated` hold the first attempt whole — it built, ran, packaged for three targets
+> and passed 178 tests. Anything can be read or copied back from there.
 >
-> Nothing here is deleted, so any part of it can be read, copied or revived —
-> `docs/DEVLOG.md` in particular records what went wrong and why, which is the part worth
-> carrying forward.
+> Why a rework at all: three modules grew past what a person can hold in their head, and
+> all three sit at the bottom of the graph where every change has to pass through them —
+> `derive.ts` at 883 lines and ~15 concerns, `store.ts` a single 539-line hook,
+> `storage.ts` 426 lines of schema plus five versions of migration. The plan replaces
+> each with focused modules whose dependencies point one way.
+>
+> [`docs/DEVLOG.md`](docs/DEVLOG.md) is the part of the first attempt worth carrying
+> forward, and it is carried: it records what went wrong and why, and several of its
+> entries are the reason a given module is being ported rather than retyped.
 
 A personal budget calculator for moving out — what independence actually costs, and whether it's affordable yet.
 
