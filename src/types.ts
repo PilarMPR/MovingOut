@@ -127,6 +127,46 @@ export interface Revision {
 }
 
 /**
+ * One line of a concepto's desglose — what a lump is actually made of.
+ *
+ * **A part is in no total, ever.** "Muebles cocina · 800 €" stays worth 800 €
+ * whether it is broken into four things or none; the parts say where those 800
+ * are going, and the parent's `amountCents` remains the only figure any total
+ * reads. This is the `critico` discipline applied a second time, and for the
+ * same reason: the moment a part could add to a total, breaking a row down
+ * would change what the flat costs, and writing detail would be a thing you had
+ * to be brave to do. The gap between the two is not hidden, though — it is
+ * `unallocatedCents` in `src/lib/parts.ts`, and the screen prints it.
+ *
+ * **No `history`.** A part is not an estimate the app acts on, so revising one
+ * changes no figure and there is nothing to log; the parent carries the
+ * changelog, and Historial stays a list of estimates that actually moved the
+ * budget (IND002). If the parts move and the parent does not, the answer to
+ * "can I afford this" has not changed — which is exactly what Historial exists
+ * to show.
+ *
+ * **No `frequency` or `kind`.** They belong to the concepto: a part of a
+ * monthly bill is monthly because the bill is, and a part of a possibility is
+ * possible because the possibility is. Repeating either here would let a row
+ * and its own detail disagree about what they are.
+ */
+export interface Part {
+  id: string;
+  /** "Nevera", "Vajilla y menaje". */
+  label: string;
+  /** Always positive (IND005). It takes its direction from the parent. */
+  amountCents: Cents;
+  /**
+   * `false` renders the same dashed blank an Entry gets. A part you know you
+   * need but have not priced is the normal state of a half-finished desglose —
+   * so blank is modelled, not written as a zero that would quietly claim the
+   * kettle is free.
+   */
+  hasAmount: boolean;
+  note?: string;
+}
+
+/**
  * The universal unit. Income, costs, taxes and furniture are all Entry, so
  * frequency handling, price history and totalling are written once.
  */
@@ -148,6 +188,13 @@ export interface Entry {
   hasAmount: boolean;
   /** Append-only, oldest first. */
   history: Revision[];
+  /**
+   * The desglose: where this concepto's money is going. Absent and empty mean
+   * the same thing — nobody has broken it down — and neither is a problem, so
+   * the field stays optional rather than defaulting every row to `[]` and
+   * making an untouched budget look half-filled.
+   */
+  parts?: Part[];
   /** Furniture only, and what *makes* it furniture. A live id from `SavedState.rooms`. */
   room?: Room;
   /** Links to a PurchaseProject. */

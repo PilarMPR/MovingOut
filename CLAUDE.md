@@ -12,9 +12,9 @@ Context that shapes the numbers: the user is currently a **student with no stead
 
 UI strings are **Spanish**; code, comments and docs are **English**. See [Language](#language).
 
-> **Read this before acting on anything below — 2026-08-16: this branch is an archive.** The first attempt is kept whole and is no longer worked on; `main` and `deprecated` point at the same commit, and `backup/blank-slate` holds the replan (`Start over from a blank slate`). `README.md` says the same thing at its top. Everything below describes the archived app, which built and ran — it is a record, not a plan. **The [Next step](#next-step) list is frozen with it**: do not start executing it here. If the task is to continue the product, ask which branch first. If the task is to read, copy or revive part of the first attempt, this is the branch that has it, and `docs/DEVLOG.md` is the part worth carrying forward.
+> **2026-08-16, and read this before trusting any branch note: `main` is live again.** It was frozen as an archive earlier the same day and unfrozen a few hours later — the replan was called off, and the decision is to keep building on the app that exists rather than start over. So `main` is the working branch, and the [Next step](#next-step) list below is a live plan again.
 >
-> The archive is **whole**: the `kind` / colchón feature — `CHANGELOG.md`'s `Unreleased` section — was still only in the working tree when the branch was frozen, and was committed on 2026-08-16 so that a checkout could not lose it. It is the last thing that happened here, it was never deployed, and `Unreleased` is the right name for it.
+> Two branches are left over from the freeze and neither is dead weight. **`deprecated`** is the archive proper: it holds the app exactly as it stood when the freeze was taken, which is a genuinely useful thing to `git diff` against. **`backup/blank-slate`** is the replan that was not taken — two files, a README and a `.gitignore`. Neither is being worked on, and `main` has moved past both.
 
 > **Status — 2026-08-11: built, and re-skinned to the `Independencia` design.** All eleven steps of the build order in `DESIGN-SYSTEM.md` §8 landed on 2026-08-09: tokens, types, `lib`, storage, `i18n`, the component sheet, all seven screens, the mobile fork, and the PWA.
 >
@@ -27,6 +27,8 @@ UI strings are **Spanish**; code, comments and docs are **English**. See [Langua
 > **Also 2026-08-15: a second starting point, the `Presupuesto mensual · Madrid` template** (`src/lib/template.ts`). The user's own spreadsheet as a scenario, and the *only* module in the repo that carries amounts — read its header before editing it, because that exception has a reason and three of its modelling choices are load-bearing.
 >
 > **2026-08-16: money now has a *certainty* axis — `Entry.kind`, and a colchón section in Costes.** Every row is `fijo` (committed), `esporadico` (real but yours to choose) or `critico` (**a possibility, not an expense** — in no total anywhere, and the sum of them *is* the colchón target, which is no longer stored). Resumen gained a waterfall: `entradas − fijos − compra registrada = disponible − esporádicos = margen`. Storage schema **v5**, read-compatible with v4 — a stored target becomes the first line of the cushion. See [Kind](#kind--how-certain-the-money-is).
+>
+> **2026-08-16: a concepto can say what it is made of — `Entry.parts`, and a `Desglose` tab.** "Muebles cocina · 800 €" opens into the nevera, the microondas and the vajilla. **A part is in no total, ever**: the concepto's own importe stays the only figure the app reads, so breaking a row down can never change what the flat costs. What the screen does instead is print the gap, and offer one button that adopts the parts' sum as a real revision. Storage schema **v6**, read-compatible with v5. See [The desglose](#the-desglose--what-a-lump-is-made-of).
 >
 > **2026-08-16: there is now a shopping log — a `Compras` tab, and the app's only record of money already spent.** One line per product bought, averaged per day, scaled to a month and added to salidas. Storage schema **v4**, read-compatible with v3. This reverses a "never" that was written in three places here; the argument behind that never is intact and is what shapes the feature. See [The shopping log](#the-shopping-log--the-only-record-of-money-already-spent).
 
@@ -175,6 +177,20 @@ The rules that keep it from quietly losing data:
 
 The no-hardcoded-figures rule above is about *published* numbers that go stale and read as authoritative. One person's estimates of their own budget, arriving as a revisable first revision, are not that — but say so in the header if you add another such module, or the next reader will reasonably conclude the rule was ignored.
 
+### The desglose — what a lump is made of
+
+`Part { id, label, amountCents, hasAmount, note? }`, in `Entry.parts`. One line per thing a concepto's money is going on, and the whole of the `Desglose` tab.
+
+**A part is in no total, ever** — and that is the entire design, not a limitation of it. `derive.ts` does not import `src/lib/parts.ts`, so a concepto worth 800 € is worth 800 € whether it is broken into four things or none. The reason is behavioural rather than architectural: if breaking a row down could raise what the flat costs, writing detail would be an act of courage, and the screen would sit empty exactly when it would help most. This is the `critico` discipline applied a second time, and the tests that hold it are in `parts.test.ts` under *parts reach no total*.
+
+The rules that decide what it means:
+
+- **The gap is printed, never closed silently.** `unallocatedCents` is headline − parts, and it is **signed** — the one figure in the app allowed to be negative, because it is a difference rather than an amount (IND005 does not apply). A negative gap means the parts come to *more* than the estimate, which is not an error to reject: it is the most useful thing the screen can say, because you found out the estimate was low by listing what you actually need.
+- **Adopting the parts' total is a revision, and goes through `reviseAmount`.** It lands in Historial and moves the drift, like any other change of estimate. It is a button the user presses, never automatic — and it refuses when nothing is priced, because writing a headline of 0 € would claim the thing is free rather than admit it is unpriced.
+- **No `history` on a part.** Revising one moves no figure the app reads, so there is nothing to log, and Historial stays a list of estimates that actually changed the answer (IND002 has nothing to protect here).
+- **No `frequency` or `kind` on a part** — both belong to the concepto. This is why `partsTotal` sums raw cents and carries a `check:ignore IND004`: every amount in one desglose is already in the parent's unit. Routing it through `toMonthly()` would be a real bug, not a fix, and would make every anual desglose read as 92 % unallocated.
+- **Absent and empty are one state.** An emptied desglose drops the key rather than storing `[]`, so "never broken down" and "broken down, then cleared" cannot render differently.
+
 ### The shopping log — the only record of money already spent
 
 `Purchase { id, date, product, amountCents, category, note? }`, in `Scenario.purchases`. One line per thing bought. Everything else in the app is a forecast; this is a receipt, and the two are kept apart on purpose.
@@ -273,7 +289,7 @@ grep -n 'DESIGN TOKENS\|^\.panel\|^\.kpi\|^\.tag\|^\.tbl' ~/repos/work/HotPotato
 grep -n 'HP\.renderOverview\|HP\.renderFinanciero' ~/repos/work/HotPotato_CommandCenter/index.html
 ```
 
-Tabs: **Resumen · Costes · Compras · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema**. Comparison is the reason the app exists, so it is a screen, not a mode. Compras sits straight after Costes because the two are the same money from opposite ends — what you thought it would cost, then what it did. Sistema is the component sheet rendered against the live tokens; it sits apart on the right of the tab row and is desktop-only.
+Tabs: **Resumen · Costes · Desglose · Compras · Muebles · Proyectos · Historial · Comparar · Ajustes**, plus **◇ Sistema**. Comparison is the reason the app exists, so it is a screen, not a mode. Costes, Desglose and Compras run together because the three are one movement outward from a single figure — what you think it costs, what that figure is made of, then what you actually paid. Sistema is the component sheet rendered against the live tokens; it sits apart on the right of the tab row and is desktop-only.
 
 The grammar to keep:
 
@@ -311,6 +327,7 @@ They never overlap. A category never gets a colour of its own — breakdown bars
 - **`src/i18n/es.ts`** — every Spanish string, plus `plural()`. No Spanish literals in components (`IND008`).
 - **`src/state/store.ts`** — the `useStore` hook: the one piece of mutable state, and the only caller of `storage`. Not in `lib/`, because `lib/` does not know React exists. Tabs receive it as a prop; there is no context.
 - **`src/components/`** is the twelve-component sheet from `DESIGN-SYSTEM.md` §4; **`src/tabs/`** is one file per screen, assembled from those and reaching past them for nothing. `src/tabs/Sistema.tsx` renders that sheet against the live tokens, which is what stops it drifting from what ships.
+- **`src/lib/parts.ts`** — the desglose arithmetic: `summarise`, `partsTotal`, `desgloseTotals`. Deliberately **not imported by `derive.ts`**, and that import staying absent is what guarantees a desglose cannot move a total.
 - **Two screens fork on mobile** — `CostesMobile` and `ComprasMobile`, chosen in `App.tsx` at 820 px. They are different components over the same data, never a reflowed table, and `src/lib/` does not know which is mounted. Costes forks because its grid is 1080 px wide; Compras forks because it is the screen used *standing in a shop*. Both render `bare`, without the padded page body.
 
 - **`electron/` and `android/` are shells, not forks.** Neither contains app logic, and neither is allowed to: they exist to host `dist/`. Both are careful to serve it from a **real origin** — `app://movingout` on the desktop, `https://localhost` on Android — because `localStorage` is keyed to an origin and a `file://` page's origin is opaque. Loading `dist/index.html` directly would render fine and lose data. See `docs/DEVLOG.md`.
@@ -382,8 +399,6 @@ Note the collision: `CHANGELOG.md` tracks **code**; the app's Historial tab trac
 English for `CLAUDE.md`, `.claude/`, `docs/`, `CHANGELOG.md`, code identifiers, comments and commit subjects. **Spanish stays for UI strings and user-facing text**, centralised in `src/i18n/es.ts`. Domain terms that have no clean English equivalent — *fianza*, *empadronamiento*, *autónomo*, *comunidad* — keep their Spanish names in code and docs, because translating them loses the meaning. Invariant IDs are never translated.
 
 ### Next step
-
-> **Frozen — this list was the plan when the branch was archived on 2026-08-16, and it is not the plan now.** See the archive note at the top. Read it as a record of what the first attempt thought it still owed; do not pick an item off it and start.
 
 The build order is done and the re-skin has landed, type-checked, tested and built. What is left is the part only real use can drive:
 

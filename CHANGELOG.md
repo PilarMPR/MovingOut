@@ -8,6 +8,31 @@ This tracks **code**. The app's own Historial tab tracks **prices**, which is a 
 
 ---
 
+## Unreleased — a concepto can say what it is made of
+
+Costes could tell you a kitchen costs 800 €. It could not tell you what the 800 € was, so the figure was a guess you had no way of checking and no way of improving except by guessing again. **Desglose** is where a concepto opens into the things it is actually going on.
+
+The rule the whole feature is built on: **a part is in no total, ever.** The concepto's own importe stays the only figure the app reads, so breaking a row down can never change what the flat costs. That is not a limitation — it is what makes the screen usable. If listing what you need could raise your rent, writing detail would be an act of courage, and the tab would sit empty exactly when it would help most.
+
+### Added
+- **A `Desglose` tab**, between Costes and Compras: a concepto picker on the left, the parts of the selected one on the right. Three KPIs across the top — how many conceptos are broken down, how many have parts that come to *more* than their importe, and how many desgloses are still missing a price.
+- **`Entry.parts`** and the `Part` type: label, amount, `hasAmount`, optional note. No history, no frequency, no kind — all three belong to the concepto, and repeating them would let a row and its own detail disagree about what they are.
+- **`src/lib/parts.ts`** — `summarise()`, `partsTotal()`, `desgloseTotals()`. Not imported by `derive.ts`, and that absent import is what makes the no-total rule structural instead of a promise.
+- **The signed gap.** `unallocatedCents` is headline − parts and is allowed to be negative, because it is a difference rather than an amount. A negative one is reported as `Se pasa` and is the most useful thing the screen can say: the estimate above is too low, and you found out by listing what you actually need.
+- **`Poner el importe en …`** — one button that adopts the parts' sum as the concepto's amount. It goes through `reviseAmount`, so it lands in Historial and moves the drift like any other change of estimate. It refuses when nothing is priced: a headline of 0 € would claim the thing is free rather than admit it is unpriced.
+- **24 new tests** — 18 over `parts.ts` including the two negative ones that assert a desglose reaches neither `monthlyTotals` nor `upfront`, and 7 over the v6 backfill.
+
+### Changed
+- **Storage schema v6**, read-compatible with v5 — the cheapest bump of the six: because a desglose reaches no total, a v5 payload opens under v6 reporting every figure it did before, to the cent. An absent `parts` means nobody broke that row down. An emptied desglose drops the key rather than storing `[]`, so "never broken down" and "broken down, then cleared" stay one state.
+- **`main` is the working branch again.** It was frozen as an archive earlier the same day; the replan was called off in favour of building on the app that exists. `deprecated` keeps the app as it stood at the freeze, `backup/blank-slate` keeps the road not taken, and `README.md` and `CLAUDE.md` no longer describe this branch as finished.
+
+### Notes
+- **`partsTotal` carries a `check:ignore IND004`, and it is not a shortcut.** A part has no frequency of its own, so every amount in one desglose is already in the parent's unit and the only thing it is compared against is that parent's `amountCents`. Normalising would divide an anual concepto's parts by twelve and hold them against an un-normalised anual headline, making every yearly desglose read as 92 % unallocated. The reasoning is at the call site because the fix is more plausible than the bug.
+- **No mobile fork.** Costes forks because its grid is ten columns and 1080 px; a desglose is three columns, and `.desg-split` stacking at 1100 px is enough. A third fork would have been a third component over the same data with no new reason for it.
+- **Parts are the `critico` discipline applied twice.** Both are things the app records and refuses to total, and both exist because a number that is in no total is the only kind you can write down honestly.
+
+---
+
 ## Unreleased — fijo, esporádico, crítico: money now has a certainty axis
 
 The app could tell income from cost, and cost from furniture, but not a bill you owe from a provision you chose — so "te faltan 120 €" meant the same thing whether the rent was short or the clothes budget was. And it had no way at all to write down a cost that **has not happened**: the template's five contingencies were smuggled in as `pausado` rows, because paused was the only status that kept a row visible and out of the totals.

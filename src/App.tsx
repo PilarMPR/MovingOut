@@ -10,6 +10,7 @@ import { Compras } from './tabs/Compras';
 import { ComprasMobile } from './tabs/ComprasMobile';
 import { Costes, NO_FILTERS, type Filters } from './tabs/Costes';
 import { CostesMobile } from './tabs/CostesMobile';
+import { Desglose } from './tabs/Desglose';
 import { Historial } from './tabs/Historial';
 import { Muebles } from './tabs/Muebles';
 import { Proyectos } from './tabs/Proyectos';
@@ -25,6 +26,10 @@ import { SITUACIONES } from './types';
 const TABS = [
   'resumen',
   'costes',
+  // Desglose sits between the two for the same reason Compras follows them:
+  // the three are one movement outward from a figure — what you think it costs,
+  // what that figure is made of, then what you actually paid.
+  'desglose',
   'compras',
   'muebles',
   'proyectos',
@@ -96,6 +101,11 @@ export function App() {
         ) : (
           <Costes store={store} filters={filters} onFilters={setFilters} />
         );
+      case 'desglose':
+        // No mobile fork: `.desg-split` stacks the picker above the table at
+        // 1100 px, and the table is three columns rather than Costes' ten, so
+        // there is nothing here that a phone cannot render as it stands.
+        return <Desglose store={store} />;
       case 'compras':
         return isMobile ? <ComprasMobile store={store} /> : <Compras store={store} />;
       case 'muebles':

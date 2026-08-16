@@ -237,6 +237,67 @@ describe('ensureShape', () => {
     expect(entry.history).toHaveLength(2);
     expect(entry.history[1].note).toBe('subida de tarifa');
   });
+
+  // ── v6: Entry.parts, the desglose ──────────────────────────────────────
+  //
+  // IND003 is the one invariant in this repo that has fired for real, and it
+  // fired exactly here: a field added to the payload without a backfill.
+
+  function withEntry(patch: Record<string, unknown>) {
+    return ensureShape({
+      version: 6,
+      scenarios: [{ id: 's1', entries: [{ id: 'e1', label: 'Muebles cocina', ...patch }] }],
+    }).scenarios[0].entries[0];
+  }
+
+  it('reads a v5 entry as having no desglose', () => {
+    // The whole v5 → v6 story: nobody broke this row down, and that is not a
+    // state that needs recording.
+    expect(withEntry({ amountCents: 80000, hasAmount: true }).parts).toBeUndefined();
+  });
+
+  it('keeps a stored desglose, ids and all', () => {
+    const entry = withEntry({
+      amountCents: 80000,
+      hasAmount: true,
+      parts: [
+        { id: 'd1', label: 'Nevera', amountCents: 35000, hasAmount: true },
+        { id: 'd2', label: 'Vajilla', amountCents: 0, hasAmount: false, note: 'segunda mano' },
+      ],
+    });
+    expect(entry.parts?.map((part) => part.id)).toEqual(['d1', 'd2']);
+    expect(entry.parts?.[1].note).toBe('segunda mano');
+  });
+
+  it('reads an amount without the flag as a real figure someone typed', () => {
+    const entry = withEntry({ parts: [{ id: 'd1', label: 'Nevera', amountCents: 35000 }] });
+    expect(entry.parts?.[0].hasAmount).toBe(true);
+  });
+
+  it('keeps a part with a blank label rather than dropping its amount', () => {
+    // Half a desglose is a normal thing to have typed; discarding the row would
+    // take the money beside it.
+    const entry = withEntry({ parts: [{ id: 'd1', amountCents: 9000, hasAmount: true }] });
+    expect(entry.parts).toHaveLength(1);
+    expect(entry.parts?.[0].label).toBe('');
+  });
+
+  it('stores no empty desglose, so absent and empty stay one state', () => {
+    expect(withEntry({ parts: [] }).parts).toBeUndefined();
+  });
+
+  it('coerces junk parts instead of throwing', () => {
+    // check:ignore IND005 the negative is the fixture — the assertion is that it does not survive
+    const entry = withEntry({ parts: [null, 42, { label: 'Nevera', amountCents: -35000 }] });
+    expect(entry.parts).toHaveLength(3);
+    // Negative amounts flip positive like every other amount (IND005).
+    expect(entry.parts?.[2].amountCents).toBe(35000);
+    expect(entry.parts?.every((part) => typeof part.id === 'string' && part.id !== '')).toBe(true);
+  });
+
+  it('survives parts that are not an array', () => {
+    expect(withEntry({ parts: 'nope' }).parts).toBeUndefined();
+  });
 });
 
 describe('export / import', () => {

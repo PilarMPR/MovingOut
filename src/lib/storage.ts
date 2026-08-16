@@ -15,6 +15,7 @@ import type {
   EntryKind,
   Frequency,
   IsoDate,
+  Part,
   Priority,
   Purchase,
   PurchaseProject,
@@ -46,11 +47,17 @@ const KEY = 'movingout.state';
  * v3 added the editable `categories` / `rooms` lists and stopped seeding
  * scenarios; v4 added the shopping log, `Scenario.purchases`; v5 added
  * `Entry.kind` and turned the colchón target from a stored field into the sum
- * of the `critico` rows. Every one of them reads anything older — an absent
- * `purchases` means an empty log, an absent `kind` means `fijo`, which is what
- * every row written before the field existed actually was.
+ * of the `critico` rows; v6 added `Entry.parts`, the desglose. Every one of
+ * them reads anything older — an absent `purchases` means an empty log, an
+ * absent `kind` means `fijo`, which is what every row written before the field
+ * existed actually was, and an absent `parts` means nobody broke that row down.
+ *
+ * v6 is the cheapest bump of the five: a desglose reaches no total (types.ts,
+ * `Part`), so a v5 payload opening under v6 reports every figure it did before,
+ * to the cent. The version moves anyway, because the reason to bump is that the
+ * shape changed and a *downgrade* needs to know.
  */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 /** ~a third of income is the usual rule of thumb; it is editable in Ajustes. */
 const DEFAULT_MAX_RENT_PERCENT = 32;
@@ -200,6 +207,30 @@ function ensureTaxonomy(raw: unknown, fallbackId: string, shipped: () => Taxon[]
   return taxa;
 }
 
+/**
+ * One line of a desglose.
+ *
+ * Nothing is checked against the taxonomies here, because a part carries no
+ * category: it is filed by the concepto above it, which is already checked. A
+ * part with a blank label survives — half a desglose is a normal thing to have
+ * typed, and dropping the row would delete the amount beside it.
+ */
+function ensurePart(raw: unknown): Part {
+  const r = isRecord(raw) ? raw : {};
+  const amountCents = cents(r.amountCents, 0);
+  const part: Part = {
+    id: str(r.id, newId('d')),
+    label: str(r.label, ''),
+    amountCents,
+    // Same reading as an Entry's: a stored amount above zero was a real figure
+    // someone typed, so a payload hand-edited without the flag keeps its money.
+    hasAmount: bool(r.hasAmount, amountCents > 0),
+  };
+  const note = optionalStr(r.note);
+  if (note !== undefined) part.note = note;
+  return part;
+}
+
 function ensureEntry(raw: unknown, createdAt: IsoDate, known: KnownIds): Entry {
   const r = isRecord(raw) ? raw : {};
   const history = list(r.history).map((revision) => ensureRevision(revision, createdAt));
@@ -228,6 +259,11 @@ function ensureEntry(raw: unknown, createdAt: IsoDate, known: KnownIds): Entry {
   // re-files rather than clears: clearing it would move a wardrobe into Costes.
   const room = typeof r.room === 'string' ? knownId(r.room, known.rooms, FALLBACK_ROOM) : undefined;
   if (room !== undefined) entry.room = room;
+  // Absent and empty mean the same thing — nobody broke this row down — so an
+  // empty desglose is not stored back. It keeps a v5 payload byte-identical
+  // through a v6 read/write cycle for every row nobody has touched.
+  const parts = list(r.parts).map(ensurePart);
+  if (parts.length > 0) entry.parts = parts;
   const projectId = optionalStr(r.projectId);
   if (projectId !== undefined) entry.projectId = projectId;
   const note = optionalStr(r.note);

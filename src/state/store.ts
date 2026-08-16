@@ -11,6 +11,7 @@ import type {
   Cents,
   Entry,
   IsoDate,
+  Part,
   Purchase,
   PurchaseProject,
   SavedState,
@@ -22,6 +23,7 @@ import { derive, type Derived } from '../lib/derive';
 import { pushRevision, today } from '../lib/history';
 import { newId } from '../lib/id';
 import { uniqueName } from '../lib/naming';
+import { partsTotal } from '../lib/parts';
 import { seedEntries, seedTaxonomy } from '../lib/seed';
 import { templateCategories, templateScenario } from '../lib/template';
 import {
@@ -74,6 +76,27 @@ export interface Store {
    * that resolves it without making the user hunt down four rows in Costes.
    */
   pauseEntries: (ids: string[]) => void;
+
+  /**
+   * The desglose. A part carries no history and so does not go through
+   * `reviseAmount`: it is not an estimate the app acts on, and logging its
+   * revisions would fill Historial with changes that moved no figure (IND002
+   * has nothing to protect here — see `Part` in types.ts).
+   */
+  addPart: (entryId: string, label: string) => void;
+  patchPart: (entryId: string, partId: string, patch: Partial<Part>) => void;
+  removePart: (entryId: string, partId: string) => void;
+  /**
+   * Raises — or lowers — the concepto to what its parts actually come to.
+   *
+   * The one action here that *does* go through `reviseAmount`, because it
+   * changes the estimate rather than the detail, and that is a revision like
+   * any other: it appears in Historial, and it moves the drift. This is the
+   * button for the case the desglose exists to catch — you listed what you
+   * really need, it came to more than you guessed, and the budget should now
+   * say so.
+   */
+  adoptPartsTotal: (entryId: string) => void;
 
   /**
    * The shopping log. A purchase is not an Entry and does not go through
@@ -308,6 +331,72 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     [mapActive],
   );
 
+  /** Rewrites one entry's parts. The three part actions all reduce to this. */
+  const mapParts = useCallback(
+    (entryId: string, fn: (parts: Part[]) => Part[]) => {
+      mapActive((s) => ({
+        ...s,
+        entries: s.entries.map((e) => {
+          if (e.id !== entryId) return e;
+          const parts = fn(e.parts ?? []);
+          // An emptied desglose drops the key rather than storing `[]`, so
+          // "never broken down" and "broken down, then cleared" stay the same
+          // state — there is no difference worth remembering, and keeping one
+          // would make an untouched row and a reset row render differently.
+          if (parts.length === 0) {
+            const { parts: _dropped, ...rest } = e;
+            return rest;
+          }
+          return { ...e, parts };
+        }),
+      }));
+    },
+    [mapActive],
+  );
+
+  const addPart = useCallback(
+    (entryId: string, label: string) => {
+      mapParts(entryId, (parts) => [
+        ...parts,
+        { id: newId('d'), label, amountCents: 0, hasAmount: false },
+      ]);
+    },
+    [mapParts],
+  );
+
+  const patchPart = useCallback(
+    (entryId: string, partId: string, patch: Partial<Part>) => {
+      mapParts(entryId, (parts) => parts.map((p) => (p.id === partId ? { ...p, ...patch } : p)));
+    },
+    [mapParts],
+  );
+
+  const removePart = useCallback(
+    (entryId: string, partId: string) => {
+      mapParts(entryId, (parts) => parts.filter((p) => p.id !== partId));
+    },
+    [mapParts],
+  );
+
+  const adoptPartsTotal = useCallback(
+    (entryId: string) => {
+      mapActive((s) => ({
+        ...s,
+        entries: s.entries.map((e) => {
+          if (e.id !== entryId) return e;
+          const total = partsTotal(e.parts ?? []);
+          // Nothing priced yet: adopting would write a headline of 0 €, which
+          // is a claim that this costs nothing rather than an admission that
+          // nobody has priced it. Refusing beats asserting (types.ts, hasAmount).
+          if (total === 0) return e;
+          if (e.hasAmount && e.amountCents === total) return e;
+          return pushRevision(e, total, today());
+        }),
+      }));
+    },
+    [mapActive],
+  );
+
   const pauseEntries = useCallback(
     (ids: string[]) => {
       const wanted = new Set(ids);
@@ -517,6 +606,10 @@ export function useStore(furnitureLabel: string, firstScenarioName: string): Sto
     reviseAmount,
     removeEntry,
     pauseEntries,
+    addPart,
+    patchPart,
+    removePart,
+    adoptPartsTotal,
     addPurchase,
     patchPurchase,
     removePurchase,

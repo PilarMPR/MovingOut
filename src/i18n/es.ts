@@ -41,6 +41,7 @@ export const es = {
   tabs: {
     resumen: 'Resumen',
     costes: 'Costes',
+    desglose: 'Desglose',
     compras: 'Compras',
     muebles: 'Muebles',
     proyectos: 'Proyectos',
@@ -53,6 +54,7 @@ export const es = {
   tabsShort: {
     resumen: 'Resumen',
     costes: 'Costes',
+    desglose: 'Desg.',
     compras: 'Compras',
     muebles: 'Muebles',
     proyectos: 'Proyec.',
@@ -345,6 +347,69 @@ export const es = {
     /** The v4 → v5 read: a typed target becomes the first line of the list. */
     legacyLabel: 'Objetivo de colchón',
     legacyNote: 'venía del objetivo que tenías puesto a mano — desglósalo en lo que quieras cubrir',
+  },
+
+  /**
+   * The desglose. The copy's one job is to keep saying that nothing written
+   * here changes a total — otherwise breaking a row down feels like spending,
+   * and the screen goes unused precisely when it would help most.
+   *
+   * `pasado` is deliberately phrased as a finding rather than an error. Parts
+   * that come to more than the headline mean the estimate above is too low, and
+   * the user found that out by listing what they actually need — which is the
+   * best thing this tab can do for them.
+   */
+  desglose: {
+    panel: 'Desglose · en qué se va cada concepto',
+    note: 'Nada de esto cambia ningún total',
+    intro:
+      'Aquí se apunta en qué se va exactamente cada concepto. El importe de arriba manda: da igual que lo partas en cuatro cosas o en ninguna, el piso cuesta lo mismo. Lo que sí te dice esta pantalla es cuándo lo que has listado no cuadra con lo que habías calculado.',
+    kpiBrokenDown: 'Conceptos desglosados',
+    kpiBrokenDownSub: 'de',
+    kpiBrokenDownSubSuffix: 'que podrías desglosar',
+    kpiOver: 'Se pasan del importe',
+    kpiOverSub: 'lo que has listado cuesta más de lo que calculaste',
+    kpiOverNone: 'ninguno se pasa del importe que calculaste',
+    kpiIncomplete: 'Desgloses a medias',
+    kpiIncompleteSub: 'con alguna parte sin precio',
+    kpiIncompleteNone: 'todas las partes tienen precio',
+
+    colPart: 'En qué se va',
+    colAmount: 'Cuánto',
+    colNote: 'Nota',
+    add: '+ Añadir parte',
+    newLabel: 'Parte',
+    delete: 'Borrar parte',
+    empty: '— —',
+
+    pick: 'Elige un concepto y apunta en qué se va.',
+    pickEmpty:
+      'Este escenario todavía no tiene conceptos. Añade el primero en Costes y aquí podrás decir en qué se va.',
+    emptyList: 'Este concepto no está desglosado. Añade la primera parte abajo.',
+    searchPlaceholder: 'Buscar concepto…',
+    searchEmpty: 'Ningún concepto se llama así.',
+
+    headline: 'Importe del concepto',
+    listed: 'Listado',
+    left: 'Sin desglosar',
+    over: 'De más',
+    statusVacio: 'Sin desglosar',
+    statusParcial: 'A medias',
+    statusCuadra: '✓ Cuadra',
+    statusPasado: 'Se pasa',
+
+    missing: 'partes sin precio — lo listado puede subir',
+    missingOne: 'parte sin precio — lo listado puede subir',
+
+    noteParcial: 'De este concepto todavía no has dicho en qué se va',
+    noteCuadra: 'Lo que has listado cuadra exactamente con el importe del concepto.',
+    notePasado: 'Lo que has listado cuesta',
+    notePasadoSuffix: 'más de lo que habías calculado. El importe de arriba se queda como está — súbelo tú si el desglose tiene razón.',
+    noteNoHeadline:
+      'Este concepto todavía no tiene importe, así que no hay nada con lo que comparar. Listar las partes es una forma perfectamente buena de averiguarlo.',
+
+    adopt: 'Poner el importe en',
+    adoptNote: 'queda apuntado en Historial como una revisión más',
   },
 
   /**
